@@ -1,0 +1,2 @@
+# astrbot_plugin_regex_trigger_pro_max
+小辰改的正则触发插件 Pro Max，支持更灵活的触发规则
