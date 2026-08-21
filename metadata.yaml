@@ -11,4 +11,4 @@ help: |
     /rtpm reload   热重载唤醒正则
 version: v1.0.1
 author: 小辰
-repo: https://github.com/idk114-514/should_I_respond
+repo: https://github.com/chenming0v0/astrbot_plugin_regex_trigger_pro_max
