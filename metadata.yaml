@@ -1,0 +1,14 @@
+name: astrbot_plugin_regex_trigger_pro_max
+desc: 正则唤醒 + 持续唤醒 + 小模型二次判定的融合版触发插件。软唤醒交给小模型把关，直接点名直接回。
+help: |
+  指令：
+    /wbegin        进入持续唤醒状态
+    /wexit         退出持续唤醒状态
+    /wgid          查看当前群号
+    /wstat         查看当前唤醒状态与剩余时间
+    /rtpm view     查看自管聊天记录
+    /rtpm clear    清空当前会话的自管聊天记录
+    /rtpm reload   热重载唤醒正则
+version: v1.0.1
+author: 小辰
+repo: https://github.com/idk114-514/should_I_respond
