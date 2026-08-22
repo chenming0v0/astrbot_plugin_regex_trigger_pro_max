@@ -21,7 +21,7 @@ SOURCE_CONTINUOUS = "continuous"  # 持续唤醒窗口内
 SOURCE_NATIVE = "native"        # AstrBot 原生唤醒（@ / 唤醒前缀 / 指令）
 
 PLUGIN_ID = "astrbot_plugin_regex_trigger_pro_max"
-PLUGIN_VERSION = "v1.4.1"
+PLUGIN_VERSION = "v1.4.2"
 
 try:
     from astrbot.api import web as astrbot_web
