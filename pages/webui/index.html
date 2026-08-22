@@ -3,174 +3,917 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bot唤醒Pro Max 控制台</title>
-  <link rel="stylesheet" href="./style.css">
+  <title>Bot唤醒 Pro Max</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink: #111111;
+      --paper: #f5f5f7;
+      --paper-soft: #fbfbfd;
+      --line: rgba(0, 0, 0, 0.12);
+      --line-soft: rgba(0, 0, 0, 0.07);
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --muted-2: #a1a1a6;
+      --danger: #b42318;
+      --toggle-off: #c8ced8;
+      --toggle-on: var(--ink);
+      --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.08);
+      --shadow-lift: 0 18px 42px rgba(0, 0, 0, 0.12);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--paper);
+      padding: 24px;
+      animation: pageEnter 0.5s ease-out both;
+    }
+    @keyframes pageEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes panelEnter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .container { max-width: 1160px; margin: 0 auto; }
+    .icon { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+
+    /* ---------- 顶栏 ---------- */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      margin-bottom: 16px; padding: 18px 20px; border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line-soft);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px);
+    }
+    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .brand-mark {
+      width: 44px; height: 44px; border-radius: 9px; overflow: hidden;
+      border: 1px solid var(--line-soft); background: var(--paper); flex: 0 0 auto;
+    }
+    .brand-mark img { width: 100%; height: 100%; display: block; }
+    .brand h1 {
+      font-family: Didot, "Bodoni 72", "Bodoni MT", "Libre Bodoni", Georgia, "Times New Roman", serif;
+      font-size: 30px; line-height: 0.95; font-weight: 700; letter-spacing: 0.01em;
+      color: var(--ink);
+    }
+    .subtitle {
+      color: var(--muted); font-size: 10px; line-height: 1.25; margin-top: 7px;
+      font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .topbar-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 7px; }
+    .pill {
+      display: inline-flex; align-items: center; min-height: 22px; padding: 3px 8px;
+      border-radius: 7px; border: 1px solid var(--line-soft);
+      background: var(--paper); color: var(--muted);
+      font-size: 11px; font-weight: 900; letter-spacing: 0.02em;
+    }
+    .pill.solid { color: #fff; background: var(--ink); border-color: var(--ink); }
+    .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* ---------- 按钮 ---------- */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      min-height: 36px; padding: 8px 14px; border: 1px solid transparent; border-radius: 7px;
+      font-size: 13px; font-weight: 800; font-family: inherit; line-height: 1; cursor: pointer;
+      transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn:disabled { cursor: not-allowed; opacity: 0.5; }
+    .btn-primary { background: var(--ink); color: #fff; border-color: var(--ink); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14); }
+    .btn-primary:hover:not(:disabled) { background: #000; }
+    .btn-secondary { background: #fff; color: var(--ink); border-color: var(--line); }
+    .btn-secondary:hover:not(:disabled) { background: var(--paper-soft); }
+    .btn-danger-soft { background: #fff; color: var(--danger); border-color: rgba(180, 35, 24, 0.28); }
+    .btn-danger-soft:hover:not(:disabled) { background: #fff5f5; }
+    .btn-sm { min-height: 30px; padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+
+    /* ---------- 消息条 ---------- */
+    .message-bar {
+      display: none; padding: 12px 14px; border-radius: 8px; margin-bottom: 16px;
+      border: 1px solid transparent; font-size: 13px; font-weight: 700;
+    }
+    .message-bar.show { display: block; animation: panelEnter 0.25s ease-out both; }
+    .message-error { background: #fff5f5; color: #a11910; border-color: #ffd0cc; }
+    .message-success { background: var(--paper-soft); color: var(--ink); border-color: var(--line); }
+
+    /* ---------- 指标带 ---------- */
+    .summary-band { margin-bottom: 18px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .metric {
+      display: flex; align-items: flex-start; gap: 11px; padding: 14px;
+      border: 1px solid var(--line-soft); border-radius: 8px; background: #fff;
+      box-shadow: var(--shadow-soft);
+      transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+    .metric:hover { transform: translateY(-3px); border-color: rgba(0, 0, 0, 0.16); box-shadow: var(--shadow-lift); }
+    .metric-icon {
+      width: 34px; height: 34px; display: grid; place-items: center;
+      color: var(--ink); background: var(--paper); border: 1px solid var(--line-soft);
+      border-radius: 7px; flex: 0 0 auto;
+    }
+    .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+    .metric-value { font-size: 16px; font-weight: 900; color: var(--text); overflow-wrap: anywhere; }
+
+    /* ---------- 主体分区 ---------- */
+    .section {
+      background: #fff; border: 1px solid rgba(18, 23, 35, 0.1);
+      border-radius: 8px; overflow: hidden; box-shadow: var(--shadow-soft);
+    }
+    .section-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 16px 18px; border-bottom: 1px solid var(--line-soft); background: var(--paper-soft);
+    }
+    .section-title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 16px; font-weight: 900; }
+    .section-title::before { content: ""; width: 26px; height: 2px; background: var(--ink); flex: 0 0 auto; }
+
+    /* ---------- 设置：左导航 + 右面板 ---------- */
+    .settings-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 460px; }
+    .settings-nav {
+      border-right: 1px solid var(--line-soft); background: var(--paper-soft);
+      padding: 14px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .nav-btn {
+      width: 100%; border: 1px solid transparent; background: transparent; color: #5d6678;
+      border-radius: 7px; padding: 11px 10px; display: flex; align-items: center; gap: 9px;
+      cursor: pointer; font: inherit; font-weight: 900; text-align: left;
+      transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+    }
+    .nav-btn:hover { transform: translateX(3px); background: #fff; color: var(--ink); }
+    .nav-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); box-shadow: 0 18px 34px rgba(9, 11, 18, 0.18); }
+    .settings-panel { padding: 20px 22px; min-width: 0; background: #fff; }
+    .settings-panel.active { animation: panelEnter 0.28s ease-out both; }
+    .settings-panel.is-hidden { display: none; }
+    .group-head { margin-bottom: 18px; display: grid; gap: 5px; }
+    .group-title { font-size: 24px; line-height: 1.1; font-weight: 950; }
+    .group-desc { color: var(--muted); font-size: 13px; font-weight: 700; }
+
+    /* ---------- 字段 ---------- */
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .field-row {
+      border: 1px solid var(--line-soft); border-radius: 8px; padding: 15px;
+      background: rgba(255, 255, 255, 0.86); min-width: 0;
+      transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .field-row:hover { transform: translateY(-1px); border-color: rgba(0, 0, 0, 0.16); box-shadow: 0 14px 30px rgba(8, 12, 20, 0.08); }
+    .field-row.full { grid-column: 1 / -1; }
+    .field-label { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 9px; font-weight: 900; }
+    .field-key {
+      color: var(--muted-2); font-weight: 700; font-size: 11px; font-family: var(--mono);
+      overflow-wrap: anywhere; text-align: right;
+    }
+    .field-hint { color: var(--muted); font-size: 12px; margin-top: 8px; overflow-wrap: anywhere; }
+
+    .control {
+      width: 100%; min-height: 40px; border: 1px solid rgba(18, 23, 35, 0.14);
+      border-radius: 7px; background: #fff; color: var(--text);
+      font: inherit; font-weight: 650; padding: 9px 11px; outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+    .control:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08); }
+    textarea.control { resize: vertical; min-height: 150px; line-height: 1.55; font-size: 12.5px; font-family: var(--mono); }
+    .control.short { width: 180px; }
+    .mono { font-family: var(--mono); }
+    input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+
+    /* ---------- 自定义下拉 ---------- */
+    .custom-select { position: relative; width: 100%; }
+    .select-trigger {
+      width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 9px 11px; border: 1px solid rgba(0, 0, 0, 0.14); border-radius: 7px;
+      background: #fff; color: var(--text); font: inherit; font-weight: 750; text-align: left; cursor: pointer;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+    .select-trigger:hover, .select-trigger[aria-expanded="true"] { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06); }
+    .select-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .select-chevron { width: 18px; height: 18px; display: grid; place-items: center; color: var(--muted); transition: transform 0.18s ease; flex: 0 0 auto; }
+    .select-trigger[aria-expanded="true"] .select-chevron { transform: rotate(180deg); }
+    .select-menu {
+      position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 6px);
+      display: none; max-height: 260px; overflow: auto; padding: 6px;
+      border: 1px solid var(--line); border-radius: 8px;
+      background: rgba(255, 255, 255, 0.98); box-shadow: 0 18px 46px rgba(0, 0, 0, 0.14);
+    }
+    .custom-select.open .select-menu { display: grid; gap: 3px; }
+    .select-option {
+      width: 100%; min-height: 34px; display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 7px 9px; border: 0; border-radius: 6px; background: transparent;
+      color: var(--text); font: inherit; font-weight: 750; text-align: left; cursor: pointer;
+    }
+    .select-option:hover { background: var(--paper); }
+    .select-option.selected { background: var(--ink); color: #fff; }
+    .select-check { opacity: 0; font-weight: 900; flex: 0 0 auto; display: inline-flex; }
+    .select-option.selected .select-check { opacity: 1; }
+
+    /* ---------- 开关 ---------- */
+    .toggle { position: relative; width: 46px; height: 26px; display: inline-flex; align-items: center; cursor: pointer; flex: 0 0 auto; }
+    .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .toggle-track { width: 46px; height: 26px; border-radius: 999px; background: var(--toggle-off); position: relative; transition: background 0.18s ease, box-shadow 0.18s ease; }
+    .toggle-track::after {
+      content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px;
+      border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.24);
+      transition: transform 0.18s ease;
+    }
+    .toggle input:checked + .toggle-track { background: var(--toggle-on); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
+    .toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .toggle-text { min-width: 0; }
+    .toggle-title { font-weight: 900; }
+    .toggle-desc { color: var(--muted); font-size: 12px; font-weight: 650; margin-top: 2px; overflow-wrap: anywhere; }
+
+    /* ---------- object 子块 ---------- */
+    .object-block { grid-column: 1 / -1; border: 1px solid rgba(18, 23, 35, 0.12); border-radius: 8px; padding: 15px; background: var(--paper-soft); }
+    .object-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; font-weight: 950; margin-bottom: 12px; }
+    .object-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .object-grid .span2 { grid-column: 1 / -1; }
+
+    /* ---------- tag 编辑器 ---------- */
+    .tag-editor { border: 1px solid rgba(18, 23, 35, 0.14); border-radius: 8px; padding: 9px; background: #fff; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 20px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+      padding: 5px 8px; border-radius: 999px; background: var(--ink); color: var(--paper);
+      font-size: 12px; line-height: 1.2; font-weight: 800; font-family: var(--mono);
+    }
+    .tag span { overflow-wrap: anywhere; }
+    .tag-remove {
+      width: 16px; height: 16px; border: 0; border-radius: 50%; background: transparent;
+      color: currentColor; cursor: pointer; display: inline-grid; place-items: center; padding: 0;
+    }
+    .tag-remove .icon { width: 11px; height: 11px; stroke-width: 2.5; }
+    .tag-input-row { display: flex; gap: 6px; }
+    .tag-input { flex: 1 1 auto; min-width: 120px; min-height: 34px; }
+    .tag-empty { color: var(--muted-2); font-size: 12px; font-weight: 700; padding: 2px 3px; }
+
+    /* ---------- 状态面板 ---------- */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+    th { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+    td.mono { font-family: var(--mono); font-size: 12.5px; }
+    .empty-note { color: var(--muted); font-size: 13px; font-weight: 700; padding: 18px 2px; }
+    .kv-list { display: grid; gap: 8px; }
+    .kv-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+    .kv-k { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+    .kv-v { font-weight: 750; overflow-wrap: anywhere; }
+
+    .footer { margin-top: 20px; text-align: center; color: var(--muted-2); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+
+    .is-hidden { display: none !important; }
+
+    @media (max-width: 860px) {
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .settings-layout { grid-template-columns: 1fr; }
+      .settings-nav { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--line-soft); overflow-x: auto; }
+      .nav-btn { width: auto; white-space: nowrap; }
+      .field-grid, .object-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      body { padding: 14px; }
+      .topbar { flex-direction: column; align-items: stretch; }
+      .toolbar { justify-content: stretch; }
+      .toolbar .btn { flex: 1; }
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-  <header class="appbar">
-    <div class="appbar-inner">
+  <div class="container">
+
+    <header class="topbar">
       <div class="brand">
-        <img class="logo" src="./logo.png" alt="logo">
+        <div class="brand-mark"><img src="./logo.png" alt="Bot唤醒 Pro Max"></div>
         <div class="brand-text">
           <h1>Bot唤醒 Pro Max</h1>
-          <p>正则唤醒 · 持续唤醒 · 小模型判定 <span class="ver" id="ver"></span></p>
+          <p class="subtitle">Regex · Continuous · Judge</p>
+          <div class="topbar-meta">
+            <span class="pill solid" id="ver">—</span>
+            <span class="pill" id="conn-pill">连接中</span>
+          </div>
         </div>
       </div>
-      <button id="save-btn" class="btn-filled" type="button" disabled>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-        <span>保存</span>
-      </button>
-    </div>
-  </header>
+      <div class="toolbar">
+        <button id="save-btn" class="btn btn-primary" type="button" disabled>
+          <svg class="icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          <span>保存配置</span>
+        </button>
+      </div>
+    </header>
 
-  <main class="page">
+    <div id="message-bar" class="message-bar"></div>
 
-    <section class="card" id="status-card">
-      <h2 class="card-title">运行状态</h2>
-      <div class="status-grid">
-        <div class="stat">
-          <div class="stat-label">持续唤醒</div>
-          <div class="stat-value" id="st-cont">—</div>
+    <div class="summary-band">
+      <div class="summary-grid">
+        <div class="metric">
+          <div class="metric-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></div>
+          <div>
+            <div class="metric-label">持续唤醒</div>
+            <div class="metric-value" id="m-cont">—</div>
+          </div>
         </div>
-        <div class="stat">
-          <div class="stat-label">生效的正则</div>
-          <div class="stat-value mono" id="st-regex">—</div>
+        <div class="metric">
+          <div class="metric-icon"><svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+          <div>
+            <div class="metric-label">唤醒正则</div>
+            <div class="metric-value" id="m-regex">—</div>
+          </div>
         </div>
-        <div class="stat stat-wide">
-          <div class="stat-label">唤醒中的会话</div>
-          <div class="stat-value" id="st-sessions">—</div>
+        <div class="metric">
+          <div class="metric-icon"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div>
+            <div class="metric-label">唤醒中的会话</div>
+            <div class="metric-value" id="m-sessions">—</div>
+          </div>
+        </div>
+        <div class="metric">
+          <div class="metric-icon"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg></div>
+          <div>
+            <div class="metric-label">判定供应商</div>
+            <div class="metric-value" id="m-provider">—</div>
+          </div>
         </div>
       </div>
-    </section>
-
-    <div id="panels" class="hidden">
-
-      <section class="card">
-        <h2 class="card-title">唤醒</h2>
-
-        <div class="field">
-          <div class="field-label">唤醒词正则 <code>waking_regex</code></div>
-          <div class="list-editor" id="list-waking_regex"></div>
-          <div class="field-hint" data-hint="waking_regex"></div>
-        </div>
-
-        <div class="subsection">
-          <div class="subsection-title">持续唤醒 <code>continuous_awakening</code></div>
-
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-title">启用群聊持续唤醒</div>
-              <div class="setting-desc" data-hint="continuous_awakening.enable"></div>
-            </div>
-            <label class="switch">
-              <input type="checkbox" id="field-continuous_awakening.enable">
-              <span class="track"></span><span class="thumb"></span>
-            </label>
-          </div>
-
-          <div class="field">
-            <div class="field-label" for="field-continuous_awakening.waking_interval">唤醒持续时长（秒） <code>waking_interval</code></div>
-            <input type="number" id="field-continuous_awakening.waking_interval" min="5" step="1" class="input-short">
-            <div class="field-hint" data-hint="continuous_awakening.waking_interval"></div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-text">
-              <div class="setting-title">回复时重置窗口</div>
-              <div class="setting-desc" data-hint="continuous_awakening.reset_when_reply"></div>
-            </div>
-            <label class="switch">
-              <input type="checkbox" id="field-continuous_awakening.reset_when_reply">
-              <span class="track"></span><span class="thumb"></span>
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">小模型判定</h2>
-
-        <div class="field">
-          <div class="field-label" for="field-analysis_provider_id">判定用供应商 <code>analysis_provider_id</code></div>
-          <select id="field-analysis_provider_id"></select>
-          <div class="field-hint" data-hint="analysis_provider_id"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label" for="field-analysis_fail_policy">判定失败兜底 <code>analysis_fail_policy</code></div>
-          <select id="field-analysis_fail_policy">
-            <option value="allow">allow — 判定挂了照常回复</option>
-            <option value="block">block — 判定挂了拦下不回</option>
-          </select>
-          <div class="field-hint" data-hint="analysis_fail_policy"></div>
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-text">
-            <div class="setting-title">向主模型注入情绪</div>
-            <div class="setting-desc" data-hint="inject_emotion"></div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="field-inject_emotion">
-            <span class="track"></span><span class="thumb"></span>
-          </label>
-        </div>
-
-        <div class="field">
-          <div class="field-label" for="field-random_reply_chance">随机回复概率 0.0 – 1.0 <code>random_reply_chance</code></div>
-          <input type="number" id="field-random_reply_chance" min="0" max="1" step="0.05" class="input-short">
-          <div class="field-hint" data-hint="random_reply_chance"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label" for="field-analysis_system_prompt">判定提示词 <code>analysis_system_prompt</code></div>
-          <textarea id="field-analysis_system_prompt" rows="14" spellcheck="false" class="mono"></textarea>
-          <div class="field-hint" data-hint="analysis_system_prompt"></div>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2 class="card-title">会话与历史</h2>
-
-        <div class="field">
-          <div class="field-label">会话白名单 UMO <code>whitelist</code></div>
-          <div class="list-editor" id="list-whitelist"></div>
-          <div class="field-hint" data-hint="whitelist"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label" for="field-history_max_length">每会话最大历史条数 <code>history_max_length</code></div>
-          <input type="number" id="field-history_max_length" min="1" step="1" class="input-short">
-          <div class="field-hint" data-hint="history_max_length"></div>
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-text">
-            <div class="setting-title">历史记录里保存情绪</div>
-            <div class="setting-desc" data-hint="record_emotion_in_history"></div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="field-record_emotion_in_history">
-            <span class="track"></span><span class="thumb"></span>
-          </label>
-        </div>
-      </section>
-
     </div>
 
-    <section class="card hidden" id="no-bridge">
-      <h2 class="card-title">无法连接控制台</h2>
-      <p class="muted">检测不到 AstrBot 插件页面环境。</p>
-      <p class="muted">请在 <strong>AstrBot WebUI → 插件管理 → Bot唤醒Pro Max</strong> 的插件详情页里打开本控制台。</p>
-    </section>
+    <div id="panels">
+      <section class="section">
+        <div class="section-head">
+          <div class="section-title">控制台</div>
+          <span class="pill" id="saved-pill">就绪</span>
+        </div>
+        <div class="settings-layout">
 
-  </main>
+          <nav class="settings-nav" id="nav"></nav>
 
-  <div id="toast" class="toast hidden" role="status"></div>
+          <!-- 状态 -->
+          <div class="settings-panel" data-panel="status">
+            <div class="group-head">
+              <div class="group-title">运行状态</div>
+              <div class="group-desc">持续唤醒窗口与判定链路的实时状况，每 5 秒自动刷新。</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>会话 UMO</th><th style="width:130px">剩余时间</th><th style="width:110px">操作</th></tr></thead>
+                <tbody id="session-tbody"></tbody>
+              </table>
+              <div class="empty-note" id="session-empty">当前没有处于持续唤醒窗口的会话。</div>
+            </div>
+            <div class="object-block" style="margin-top:16px">
+              <div class="object-title">生效中的配置</div>
+              <div class="kv-list">
+                <div class="kv-row"><div class="kv-k">持续唤醒</div><div class="kv-v" id="kv-cont">—</div></div>
+                <div class="kv-row"><div class="kv-k">唤醒正则</div><div class="kv-v mono" id="kv-regex">—</div></div>
+                <div class="kv-row"><div class="kv-k">白名单</div><div class="kv-v" id="kv-wl">—</div></div>
+                <div class="kv-row"><div class="kv-k">历史会话数</div><div class="kv-v" id="kv-hist">—</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 唤醒 -->
+          <div class="settings-panel is-hidden" data-panel="wake">
+            <div class="group-head">
+              <div class="group-title">唤醒</div>
+              <div class="group-desc">正则唤醒词与持续唤醒窗口。</div>
+            </div>
+            <div class="field-grid">
+              <div class="field-row full">
+                <div class="field-label">唤醒词正则 <span class="field-key">waking_regex</span></div>
+                <div id="tag-waking_regex"></div>
+                <div class="field-hint" data-hint="waking_regex"></div>
+              </div>
+              <div class="object-block">
+                <div class="object-title">持续唤醒 <span class="field-key">continuous_awakening</span></div>
+                <div class="object-grid">
+                  <div class="span2 toggle-row">
+                    <div class="toggle-text">
+                      <div class="toggle-title">启用群聊持续唤醒</div>
+                      <div class="toggle-desc" data-hint="continuous_awakening.enable"></div>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="field-continuous_awakening.enable"><span class="toggle-track"></span></label>
+                  </div>
+                  <div>
+                    <div class="field-label">唤醒持续时长（秒） <span class="field-key">waking_interval</span></div>
+                    <input type="number" class="control short" id="field-continuous_awakening.waking_interval" min="5" step="1">
+                    <div class="field-hint" data-hint="continuous_awakening.waking_interval"></div>
+                  </div>
+                  <div class="toggle-row">
+                    <div class="toggle-text">
+                      <div class="toggle-title">回复时重置窗口</div>
+                      <div class="toggle-desc" data-hint="continuous_awakening.reset_when_reply"></div>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="field-continuous_awakening.reset_when_reply"><span class="toggle-track"></span></label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 判定 -->
+          <div class="settings-panel is-hidden" data-panel="judge">
+            <div class="group-head">
+              <div class="group-title">小模型判定</div>
+              <div class="group-desc">判定供应商、兜底策略与情绪注入。</div>
+            </div>
+            <div class="field-grid">
+              <div class="field-row">
+                <div class="field-label">判定用供应商 <span class="field-key">analysis_provider_id</span></div>
+                <div id="sel-analysis_provider_id"></div>
+                <div class="field-hint" data-hint="analysis_provider_id"></div>
+              </div>
+              <div class="field-row">
+                <div class="field-label">判定失败兜底 <span class="field-key">analysis_fail_policy</span></div>
+                <div id="sel-analysis_fail_policy"></div>
+                <div class="field-hint" data-hint="analysis_fail_policy"></div>
+              </div>
+              <div class="field-row">
+                <div class="field-label">随机回复概率 <span class="field-key">random_reply_chance</span></div>
+                <input type="number" class="control short" id="field-random_reply_chance" min="0" max="1" step="0.05">
+                <div class="field-hint" data-hint="random_reply_chance"></div>
+              </div>
+              <div class="field-row toggle-row" style="align-items:flex-start">
+                <div class="toggle-text">
+                  <div class="toggle-title">向主模型注入情绪</div>
+                  <div class="toggle-desc" data-hint="inject_emotion"></div>
+                </div>
+                <label class="toggle" style="margin-top:4px"><input type="checkbox" id="field-inject_emotion"><span class="toggle-track"></span></label>
+              </div>
+              <div class="field-row full">
+                <div class="field-label">判定提示词 <span class="field-key">analysis_system_prompt</span></div>
+                <textarea class="control" id="field-analysis_system_prompt" rows="14" spellcheck="false"></textarea>
+                <div class="field-hint" data-hint="analysis_system_prompt"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 会话与历史 -->
+          <div class="settings-panel is-hidden" data-panel="history">
+            <div class="group-head">
+              <div class="group-title">会话与历史</div>
+              <div class="group-desc">白名单与自管聊天记录。</div>
+            </div>
+            <div class="field-grid">
+              <div class="field-row full">
+                <div class="field-label">会话白名单 UMO <span class="field-key">whitelist</span></div>
+                <div id="tag-whitelist"></div>
+                <div class="field-hint" data-hint="whitelist"></div>
+              </div>
+              <div class="field-row">
+                <div class="field-label">每会话最大历史条数 <span class="field-key">history_max_length</span></div>
+                <input type="number" class="control short" id="field-history_max_length" min="1" step="1">
+                <div class="field-hint" data-hint="history_max_length"></div>
+              </div>
+              <div class="field-row toggle-row" style="align-items:flex-start">
+                <div class="toggle-text">
+                  <div class="toggle-title">历史记录里保存情绪</div>
+                  <div class="toggle-desc" data-hint="record_emotion_in_history"></div>
+                </div>
+                <label class="toggle" style="margin-top:4px"><input type="checkbox" id="field-record_emotion_in_history"><span class="toggle-track"></span></label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+
+    <div class="section is-hidden" id="no-bridge" style="padding:26px">
+      <div class="group-head">
+        <div class="group-title">无法连接控制台</div>
+        <div class="group-desc">检测不到 AstrBot 插件页面环境。请在 AstrBot WebUI → 插件管理 → Bot唤醒Pro Max 的插件详情页里打开本控制台。</div>
+      </div>
+    </div>
+
+    <div class="footer">Bot唤醒 Pro Max · 辰林 &amp; 小辰</div>
+  </div>
 
   <!-- AstrBot 会在返回页面时自动注入桥 SDK，但注入晚于普通脚本执行；
-       显式引入保证 app.js 运行前 window.AstrBotPluginPage 已就绪（本地直接打开时 404，走离线提示） -->
+       显式引入保证下方脚本运行前 window.AstrBotPluginPage 已就绪（本地直接打开时 404，走离线提示） -->
   <script src="/api/plugin/page/bridge-sdk.js"></script>
-  <script src="./app.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    var bridge = null;
+    var schema = null;
+    var statusTimer = null;
+    var providerName = "";
+
+    var ICONS = {
+      x: '<svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+      plus: '<svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+      check: '<svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+      chevron: '<svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>',
+      activity: '<svg class="icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+      radio: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
+      cpu: '<svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>',
+      archive: '<svg class="icon" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>'
+    };
+
+    var NAV_ITEMS = [
+      { key: "status", label: "运行状态", icon: "activity" },
+      { key: "wake", label: "唤醒", icon: "radio" },
+      { key: "judge", label: "小模型判定", icon: "cpu" },
+      { key: "history", label: "会话与历史", icon: "archive" }
+    ];
+
+    var OBJECT_KEYS = { continuous_awakening: ["enable", "waking_interval", "reset_when_reply"] };
+
+    var TOP_KEYS = [
+      "waking_regex", "continuous_awakening", "analysis_provider_id", "analysis_fail_policy",
+      "random_reply_chance", "inject_emotion", "whitelist", "history_max_length",
+      "record_emotion_in_history", "analysis_system_prompt"
+    ];
+
+    function $(id) { return document.getElementById(id); }
+
+    /* ---------- 消息条 ---------- */
+    function message(text, kind) {
+      var el = $("message-bar");
+      el.textContent = text;
+      el.className = "message-bar show" + (kind === "error" ? " message-error" : " message-success");
+      clearTimeout(el._t);
+      el._t = setTimeout(function () { el.className = "message-bar"; }, 3200);
+    }
+
+    /* ---------- 导航 ---------- */
+    function initNav() {
+      var nav = $("nav");
+      NAV_ITEMS.forEach(function (item, idx) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "nav-btn" + (idx === 0 ? " active" : "");
+        btn.setAttribute("data-nav", item.key);
+        btn.innerHTML = ICONS[item.icon] + "<span>" + item.label + "</span>";
+        btn.addEventListener("click", function () {
+          var all = nav.querySelectorAll(".nav-btn");
+          for (var i = 0; i < all.length; i++) all[i].classList.remove("active");
+          btn.classList.add("active");
+          var panels = document.querySelectorAll(".settings-panel");
+          for (var j = 0; j < panels.length; j++) {
+            var el = panels[j];
+            var on = el.getAttribute("data-panel") === item.key;
+            el.classList.toggle("is-hidden", !on);
+            el.classList.toggle("active", on);
+          }
+        });
+        nav.appendChild(btn);
+      });
+      var first = document.querySelector('.settings-panel[data-panel="status"]');
+      if (first) first.classList.add("active");
+    }
+
+    /* ---------- 提示注入 ---------- */
+    function specOf(path) {
+      if (!schema) return null;
+      var parts = path.split(".");
+      var node = schema[parts[0]];
+      if (parts.length > 1 && node && node.items) node = node.items[parts[1]];
+      return node || null;
+    }
+    function renderHints() {
+      var nodes = document.querySelectorAll("[data-hint]");
+      for (var i = 0; i < nodes.length; i++) {
+        var spec = specOf(nodes[i].getAttribute("data-hint"));
+        if (!spec) continue;
+        var parts = [];
+        if (spec.description) parts.push(spec.description);
+        if (spec.hint) parts.push(spec.hint);
+        nodes[i].textContent = parts.join(" — ");
+      }
+    }
+
+    /* ---------- tag 编辑器 ---------- */
+    function makeTagEditor(mountId, placeholder) {
+      var mount = $(mountId);
+      var data = [];
+      var root = document.createElement("div");
+      root.className = "tag-editor";
+      mount.appendChild(root);
+
+      function render() {
+        root.innerHTML = "";
+        var list = document.createElement("div");
+        list.className = "tag-list";
+        if (!data.length) {
+          var empty = document.createElement("span");
+          empty.className = "tag-empty";
+          empty.textContent = "（空，添加一条试试）";
+          list.appendChild(empty);
+        }
+        data.forEach(function (val, idx) {
+          var tag = document.createElement("span");
+          tag.className = "tag";
+          var text = document.createElement("span");
+          text.textContent = val;
+          var rm = document.createElement("button");
+          rm.type = "button";
+          rm.className = "tag-remove";
+          rm.title = "删除";
+          rm.innerHTML = ICONS.x;
+          rm.addEventListener("click", function () { data.splice(idx, 1); render(); });
+          tag.appendChild(text);
+          tag.appendChild(rm);
+          list.appendChild(tag);
+        });
+        root.appendChild(list);
+
+        var row = document.createElement("div");
+        row.className = "tag-input-row";
+        var input = document.createElement("input");
+        input.type = "text";
+        input.className = "control tag-input mono";
+        input.placeholder = placeholder;
+        var addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "btn btn-secondary btn-sm";
+        addBtn.innerHTML = ICONS.plus + "<span>添加</span>";
+        function commit() {
+          var v = input.value.trim();
+          if (!v) return;
+          data.push(v);
+          render();
+          var inputs = root.querySelectorAll(".tag-input");
+          if (inputs.length) inputs[0].focus();
+        }
+        addBtn.addEventListener("click", commit);
+        input.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); commit(); } });
+        row.appendChild(input);
+        row.appendChild(addBtn);
+        root.appendChild(row);
+      }
+      render();
+      return {
+        set: function (arr) { data = (arr || []).slice(); render(); },
+        get: function () { return data.map(function (s) { return s.trim(); }).filter(function (s) { return s !== ""; }); }
+      };
+    }
+
+    /* ---------- 自定义下拉 ---------- */
+    function makeSelect(mountId, onChange) {
+      var mount = $(mountId);
+      var options = [];
+      var value = "";
+      var root = document.createElement("div");
+      root.className = "custom-select";
+      mount.appendChild(root);
+
+      function labelOf(v) {
+        for (var i = 0; i < options.length; i++) if (options[i].value === v) return options[i].label;
+        return v;
+      }
+      function renderMenu() {
+        var menu = document.createElement("div");
+        menu.className = "select-menu";
+        options.forEach(function (opt) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "select-option" + (opt.value === value ? " selected" : "");
+          var text = document.createElement("span");
+          text.textContent = opt.label;
+          var check = document.createElement("span");
+          check.className = "select-check";
+          check.innerHTML = ICONS.check;
+          btn.appendChild(text);
+          btn.appendChild(check);
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            value = opt.value;
+            root.classList.remove("open");
+            trigger.setAttribute("aria-expanded", "false");
+            render();
+            if (onChange) onChange(value);
+          });
+          menu.appendChild(btn);
+        });
+        return menu;
+      }
+      var trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "select-trigger";
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var open = root.classList.toggle("open");
+        trigger.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      function render() {
+        var label = document.createElement("span");
+        label.className = "select-value";
+        label.textContent = labelOf(value);
+        var chev = document.createElement("span");
+        chev.className = "select-chevron";
+        chev.innerHTML = ICONS.chevron;
+        trigger.innerHTML = "";
+        trigger.appendChild(label);
+        trigger.appendChild(chev);
+        root.innerHTML = "";
+        root.appendChild(trigger);
+        root.appendChild(renderMenu());
+      }
+      render();
+      document.addEventListener("click", function () {
+        root.classList.remove("open");
+        trigger.setAttribute("aria-expanded", "false");
+      });
+      return {
+        set: function (v) { value = v || ""; render(); },
+        get: function () { return value; },
+        setOptions: function (opts) { options = opts || []; render(); }
+      };
+    }
+
+    /* ---------- 控件实例 ---------- */
+    var tagRegex = makeTagEditor("tag-waking_regex", ".*小辰.*");
+    var tagWhitelist = makeTagEditor("tag-whitelist", "aiocqhttp:GroupMessage:114514");
+    var selProvider = makeSelect("sel-analysis_provider_id", function (v) { providerName = v; });
+    var selPolicy = makeSelect("sel-analysis_fail_policy");
+
+    function setFieldValue(key, value) {
+      var el = $("field-" + key);
+      if (!el) return;
+      if (el.type === "checkbox") el.checked = !!value;
+      else el.value = value == null ? "" : value;
+    }
+    function getFieldValue(key) {
+      var el = $("field-" + key);
+      if (!el) return null;
+      if (el.type === "checkbox") return el.checked;
+      if (el.type === "number") return el.value === "" ? null : Number(el.value);
+      return el.value;
+    }
+
+    /* ---------- 状态 ---------- */
+    var lastValues = {};
+    function renderStatus(data) {
+      var sessions = data.sessions || [];
+      $("m-cont").textContent = data.continuous_enabled ? "已开启" : "已关闭";
+      $("m-regex").textContent = (data.regex_compiled || []).length + " 条";
+      $("m-sessions").textContent = sessions.length + " 个";
+      $("m-provider").textContent = providerName || "默认供应商";
+
+      $("kv-cont").textContent = data.continuous_enabled ? "已开启" : "已关闭";
+      $("kv-regex").textContent = (data.regex_compiled || []).join("   ") || "（无）";
+      var wl = (lastValues.whitelist || []);
+      $("kv-wl").textContent = wl.length ? wl.length + " 条（" + wl.join("、") + "）" : "不限制";
+      var hist = data.history || {};
+      var count = 0, total = 0;
+      for (var k in hist) { count++; total += hist[k]; }
+      $("kv-hist").textContent = count + " 个会话 / 共 " + total + " 条";
+
+      var tbody = $("session-tbody");
+      tbody.innerHTML = "";
+      $("session-empty").classList.toggle("is-hidden", sessions.length > 0);
+      sessions.sort(function (a, b) { return a.remain - b.remain; }).forEach(function (s) {
+        var tr = document.createElement("tr");
+        var td1 = document.createElement("td");
+        td1.className = "mono";
+        td1.textContent = s.umo;
+        var td2 = document.createElement("td");
+        td2.textContent = s.remain + " 秒";
+        var td3 = document.createElement("td");
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-danger-soft btn-sm";
+        btn.innerHTML = ICONS.x + "<span>退出</span>";
+        btn.addEventListener("click", function () {
+          bridge.apiPost("webui/session", { umo: s.umo }).then(function () {
+            message("已退出：" + s.umo);
+            refreshStatus();
+          }, function (e) { message("操作失败：" + (e && e.message ? e.message : e), "error"); });
+        });
+        td3.appendChild(btn);
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+        tbody.appendChild(tr);
+      });
+    }
+    function refreshStatus() {
+      if (!bridge) return;
+      bridge.apiGet("webui/status").then(renderStatus, function () { /* 静默，下次轮询再试 */ });
+    }
+
+    /* ---------- 保存 ---------- */
+    function collectValues() {
+      var values = {};
+      TOP_KEYS.forEach(function (key) {
+        if (key === "waking_regex") { values[key] = tagRegex.get(); return; }
+        if (key === "whitelist") { values[key] = tagWhitelist.get(); return; }
+        if (OBJECT_KEYS[key]) {
+          var obj = {};
+          OBJECT_KEYS[key].forEach(function (sub) { obj[sub] = getFieldValue(key + "." + sub); });
+          values[key] = obj;
+          return;
+        }
+        if (key === "analysis_provider_id") { values[key] = selProvider.get(); return; }
+        if (key === "analysis_fail_policy") { values[key] = selPolicy.get(); return; }
+        values[key] = getFieldValue(key);
+      });
+      return values;
+    }
+    function save() {
+      var btn = $("save-btn");
+      btn.disabled = true;
+      $("saved-pill").textContent = "保存中…";
+      bridge.apiPost("webui/config", { values: collectValues() }).then(
+        function (res) {
+          btn.disabled = false;
+          var keys = (res && res.applied) || [];
+          $("saved-pill").textContent = "已保存";
+          message("已保存 " + keys.length + " 项配置，立即生效。");
+          refreshStatus();
+        },
+        function (e) {
+          btn.disabled = false;
+          $("saved-pill").textContent = "保存失败";
+          message("保存失败：" + (e && e.message ? e.message : e), "error");
+        }
+      );
+    }
+
+    /* ---------- 配置装载 ---------- */
+    function applyConfig(cfg) {
+      schema = cfg.schema || {};
+      var values = cfg.values || {};
+      lastValues = values;
+      $("ver").textContent = cfg.version || "";
+      $("conn-pill").textContent = "已连接";
+
+      renderHints();
+
+      var provOpts = [{ value: "", label: "留空 = 使用当前默认供应商" }];
+      (cfg.providers || []).forEach(function (p) { provOpts.push({ value: p, label: p }); });
+      selProvider.setOptions(provOpts);
+      var wanted = values.analysis_provider_id || "";
+      if (wanted && (cfg.providers || []).indexOf(wanted) === -1) {
+        provOpts.push({ value: wanted, label: wanted + "（已失效，请重选）" });
+        selProvider.setOptions(provOpts);
+      }
+      selProvider.set(wanted);
+      providerName = wanted;
+
+      selPolicy.setOptions([
+        { value: "allow", label: "allow — 判定挂了照常回复" },
+        { value: "block", label: "block — 判定挂了拦下不回" }
+      ]);
+      selPolicy.set(values.analysis_fail_policy || "allow");
+
+      tagRegex.set(values.waking_regex || []);
+      tagWhitelist.set(values.whitelist || []);
+
+      OBJECT_KEYS.continuous_awakening.forEach(function (sub) {
+        setFieldValue("continuous_awakening." + sub, (values.continuous_awakening || {})[sub]);
+      });
+      ["random_reply_chance", "inject_emotion", "history_max_length", "record_emotion_in_history", "analysis_system_prompt"]
+        .forEach(function (key) { setFieldValue(key, values[key]); });
+
+      $("panels").classList.remove("is-hidden");
+      $("save-btn").disabled = false;
+      $("save-btn").onclick = save;
+
+      refreshStatus();
+      statusTimer = setInterval(refreshStatus, 5000);
+    }
+
+    /* ---------- 启动 ---------- */
+    function waitForBridge(timeoutMs) {
+      return new Promise(function (resolve) {
+        if (window.AstrBotPluginPage) { resolve(window.AstrBotPluginPage); return; }
+        var waited = 0;
+        var timer = setInterval(function () {
+          if (window.AstrBotPluginPage) { clearInterval(timer); resolve(window.AstrBotPluginPage); return; }
+          waited += 100;
+          if (waited >= timeoutMs) { clearInterval(timer); resolve(null); }
+        }, 100);
+      });
+    }
+
+    initNav();
+
+    waitForBridge(4000).then(function (b) {
+      if (!b || typeof b.apiGet !== "function") {
+        $("no-bridge").classList.remove("is-hidden");
+        $("panels").classList.add("is-hidden");
+        $("conn-pill").textContent = "离线";
+        return null;
+      }
+      bridge = b;
+      $("conn-pill").textContent = "已桥接";
+      return bridge.ready ? bridge.ready() : {};
+    }).then(function (ctx) {
+      if (!ctx || !bridge) return null;
+      return bridge.apiGet("webui/config");
+    }).then(function (cfg) {
+      if (!cfg) return;
+      applyConfig(cfg);
+    }, function (e) {
+      message("读取配置失败：" + (e && e.message ? e.message : e), "error");
+    });
+
+    window.addEventListener("beforeunload", function () {
+      if (statusTimer) clearInterval(statusTimer);
+    });
+  })();
+  </script>
 </body>
 </html>
