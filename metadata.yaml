@@ -1,10 +1,15 @@
 name: astrbot_plugin_regex_trigger_pro_max
-desc: 正则唤醒 + 持续唤醒 + 小模型二次判定的融合版触发插件。软唤醒交给小模型把关，直接点名直接回。
+display_name: Bot唤醒Pro Max
+desc: 正则唤醒 + 持续唤醒 + 小模型二次判定的触发插件，自带 WebUI 控制台。软唤醒交给小模型把关，直接点名直接回。
 help: |
-  本插件不注册任何指令，全部行为由配置面板控制：
+  本插件不注册任何指令，全部行为由 WebUI 控制台或配置面板控制：
     - waking_regex 填唤醒词正则，消息命中即视为唤醒
     - 唤醒后的消息先交给判定模型判断该不该回，判要回才调主模型
-    - 持续唤醒、白名单、情绪注入等均在配置面板调整
-version: v1.0.2
+    - 判定模型可输出 exit_wake 主动退出持续唤醒
+    - 持续唤醒、白名单、情绪注入等均在 WebUI / 配置面板调整
+version: v1.1.0
 author: 小辰
 repo: https://github.com/chenming0v0/astrbot_plugin_regex_trigger_pro_max
+pages:
+  - name: webui
+    title: Bot唤醒Pro Max 控制台

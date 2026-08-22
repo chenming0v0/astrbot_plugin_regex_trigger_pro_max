@@ -20,13 +20,21 @@ SOURCE_REGEX = "regex"          # 正则唤醒词命中
 SOURCE_CONTINUOUS = "continuous"  # 持续唤醒窗口内
 SOURCE_NATIVE = "native"        # AstrBot 原生唤醒（@ / 唤醒前缀 / 指令）
 
+PLUGIN_ID = "astrbot_plugin_regex_trigger_pro_max"
+PLUGIN_VERSION = "v1.1.0"
+
+try:
+    from astrbot.api import web as astrbot_web
+except Exception:  # 旧版 AstrBot 没有插件页面 API，WebUI 整体不启用
+    astrbot_web = None  # type: ignore[assignment]
+
 
 @register(
-    "astrbot_plugin_regex_trigger_pro_max",
+    PLUGIN_ID,
     "辰林 & 小辰",
-    "正则唤醒 + 持续唤醒 + 小模型二次判定，融合版触发插件 Pro Max",
-    "v1.0.2",
-    "https://github.com/idk114-514/should_I_respond",
+    "Bot唤醒Pro Max：正则唤醒 + 持续唤醒 + 小模型二次判定，自带 WebUI 控制台",
+    PLUGIN_VERSION,
+    "https://github.com/chenming0v0/astrbot_plugin_regex_trigger_pro_max",
 )
 class RegexTriggerProMax(Star):
     """把 wake_enhance 的正则/持续唤醒与 should_I_respond 的小模型判定串成一条流程。
@@ -56,7 +64,12 @@ class RegexTriggerProMax(Star):
         self.history_lock = asyncio.Lock()
 
         asyncio.create_task(self._load_history())
-        logger.info("[RTPM] 正则触发插件 Pro Max 已加载。")
+
+        # ---------- WebUI 控制台 ----------
+        self._schema_cache: Dict[str, Any] = self._load_schema()
+        self._register_webui()
+
+        logger.info("[RTPM] Bot唤醒Pro Max 已加载。")
 
     # ==================================================================
     # 唤醒段：来自 wake_enhance
@@ -318,6 +331,12 @@ class RegexTriggerProMax(Star):
                 await self._handle_analysis_fail(event, f"分析模型没吐出可解析的 JSON：{response_text[:200]}")
                 return
 
+            # 判定模型发现自己没被注意，主动退出持续唤醒窗口。
+            # 本条回不回仍由 should_reply 决定，允许它「回完最后一句再退场」。
+            if result.get("exit_wake"):
+                self.waking_sessions.pop(session_id, None)
+                logger.info(f"[RTPM] 判定模型主动退出持续唤醒：{result.get('reason')}")
+
             if not result.get("should_reply", True):
                 logger.info(f"[RTPM] 判定不回复（来源 {source}）：{result.get('reason')}")
                 event.stop_event()
@@ -366,6 +385,152 @@ class RegexTriggerProMax(Star):
         self.history_cache.setdefault(session_id, []).append(entry)
         await self._save_history()
 
+    # ==================================================================
+    # WebUI 段：配置控制台（接入方式参考 AstrNa 的插件页面机制）
+    # ==================================================================
+
+    def _load_schema(self) -> Dict[str, Any]:
+        try:
+            with open(Path(__file__).parent / "_conf_schema.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"[RTPM] WebUI 读取配置模板失败：{e}")
+            return {}
+
+    def _register_webui(self):
+        register = getattr(self.context, "register_web_api", None)
+        if not callable(register) or astrbot_web is None:
+            logger.info("[RTPM] 当前 AstrBot 不支持插件页面，WebUI 未启用（不影响其他功能）。")
+            return
+        base = f"/{PLUGIN_ID}/webui"
+        try:
+            register(f"{base}/config", self._webui_get_config, ["GET"], "Bot唤醒Pro Max 读取配置")
+            register(f"{base}/config", self._webui_save_config, ["POST"], "Bot唤醒Pro Max 保存配置")
+            register(f"{base}/status", self._webui_get_status, ["GET"], "Bot唤醒Pro Max 运行状态")
+            register(f"{base}/session", self._webui_drop_session, ["POST"], "Bot唤醒Pro Max 退出唤醒")
+            logger.info("[RTPM] WebUI 控制台已注册。")
+        except Exception as e:
+            logger.warning(f"[RTPM] WebUI 注册失败：{e}")
+
+    async def _webui_get_config(self):
+        providers = []
+        try:
+            for p in self.context.get_all_providers():
+                pid = getattr(getattr(p, "provider_config", None), "id", "") or getattr(p, "id", "")
+                if pid:
+                    providers.append(pid)
+        except Exception:
+            pass
+        values = {key: self.config.get(key) for key in self._schema_cache}
+        return astrbot_web.json_response({
+            "version": PLUGIN_VERSION,
+            "schema": self._schema_cache,
+            "values": values,
+            "providers": providers,
+        })
+
+    def _normalize_value(self, spec: Dict[str, Any], value):
+        """按 schema 归一前端提交的值，不合法返回 (None, False)。"""
+        vtype = spec.get("type")
+        try:
+            if vtype == "bool":
+                if isinstance(value, bool):
+                    return value, True
+                return str(value).strip().lower() in ("1", "true", "yes", "on"), True
+            if vtype == "int":
+                return int(float(value)), True
+            if vtype == "float":
+                return float(value), True
+            if vtype == "list":
+                if isinstance(value, str):
+                    value = [line.strip() for line in value.splitlines() if line.strip()]
+                return [str(x) for x in (value or [])], True
+            if vtype == "object":
+                if not isinstance(value, dict):
+                    return None, False
+                out = {}
+                for sub_key, sub_spec in (spec.get("items") or {}).items():
+                    if sub_key in value:
+                        sub_val, ok = self._normalize_value(sub_spec, value[sub_key])
+                        if ok:
+                            out[sub_key] = sub_val
+                return out, True
+            text = str(value)
+            options = spec.get("options")
+            if options and text not in options:
+                return None, False
+            return text, True
+        except (TypeError, ValueError):
+            return None, False
+
+    async def _webui_save_config(self):
+        try:
+            payload = await astrbot_web.request.json(default={})
+        except Exception:
+            return astrbot_web.error_response("请求体不是合法 JSON", status_code=400)
+        values = payload.get("values") if isinstance(payload, dict) else None
+        if not isinstance(values, dict):
+            return astrbot_web.error_response('请求体必须是 {"values": {...}}', status_code=400)
+
+        applied = {}
+        for key, value in values.items():
+            spec = self._schema_cache.get(key)
+            if spec is None:
+                continue  # 模板外的键一律不收
+            norm, ok = self._normalize_value(spec, value)
+            if not ok:
+                return astrbot_web.error_response(f"配置项 {key} 的值不合法", status_code=400)
+            applied[key] = norm
+
+        for key, value in applied.items():
+            self.config[key] = value
+
+        try:
+            save_async = getattr(self.config, "save_config_async", None)
+            if callable(save_async):
+                await save_async()
+            else:
+                self.config.save_config()
+        except Exception as e:
+            logger.error(f"[RTPM] WebUI 保存配置失败：{e}", exc_info=True)
+            return astrbot_web.error_response("配置保存失败，详情见日志", status_code=500)
+
+        self._apply_runtime_config()
+        logger.info(f"[RTPM] WebUI 已保存配置：{', '.join(sorted(applied)) or '（无变更）'}")
+        return astrbot_web.json_response({"ok": True, "applied": sorted(applied)})
+
+    def _apply_runtime_config(self):
+        """配置变更后刷新运行时状态，免重载插件即可生效。"""
+        self.waking_regex = self.config.get("waking_regex", []) or []
+        self.c_awake = self.config.get("continuous_awakening", {}) or {}
+        self.whitelist = self.config.get("whitelist", []) or []
+        self._compile_regex()
+
+    async def _webui_get_status(self):
+        interval = float(self.c_awake.get("waking_interval", 30))
+        now = time.time()
+        sessions = [
+            {"umo": umo, "remain": round(max(interval - (now - info.get("last_time", 0)), 0), 1)}
+            for umo, info in self.waking_sessions.items()
+        ]
+        return astrbot_web.json_response({
+            "sessions": sessions,
+            "continuous_enabled": bool(self.c_awake.get("enable", False)),
+            "regex_compiled": [p.pattern for p in self._compiled_regex],
+            "history": {sid: len(msgs) for sid, msgs in self.history_cache.items()},
+        })
+
+    async def _webui_drop_session(self):
+        try:
+            payload = await astrbot_web.request.json(default={})
+        except Exception:
+            return astrbot_web.error_response("请求体不是合法 JSON", status_code=400)
+        umo = payload.get("umo") if isinstance(payload, dict) else None
+        if not umo:
+            return astrbot_web.error_response("缺少 umo", status_code=400)
+        removed = self.waking_sessions.pop(str(umo), None)
+        return astrbot_web.json_response({"ok": removed is not None})
+
     async def terminate(self):
         await self._save_history()
-        logger.info("[RTPM] 正则触发插件 Pro Max 已卸载。")
+        logger.info("[RTPM] Bot唤醒Pro Max 已卸载。")
