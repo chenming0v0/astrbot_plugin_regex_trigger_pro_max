@@ -41,9 +41,16 @@
   "analysis_provider_id": {
     "description": "用于判定的 LLM 供应商",
     "type": "string",
-    "hint": "在下拉列表里选一个专门跑判定的小模型供应商。留空则整个判定环节不生效。",
+    "hint": "在下拉列表里选一个专门跑判定的小模型供应商。留空则自动回退到当前默认供应商（通常是主模型）跑判定，功能不缺，只是判定也走主模型的 token。",
     "_special": "select_provider",
     "default": ""
+  },
+  "analysis_fail_policy": {
+    "description": "判定失败时的兜底策略",
+    "type": "string",
+    "options": ["allow", "block"],
+    "hint": "判定模型调用失败或输出不是合法 JSON 时的行为。allow = 放行照常回复；block = 拦下不回（裁判缺席就不许说话，但判定模型坏了会导致 Bot 一言不发）。",
+    "default": "allow"
   },
   "random_reply_chance": {
     "description": "随机回复概率 (0.0 - 1.0)",

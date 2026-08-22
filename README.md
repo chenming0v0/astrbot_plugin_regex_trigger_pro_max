@@ -44,7 +44,8 @@ save_llm_reply_to_history  回复入自管历史
 
 - `waking_regex`：唤醒正则，改完保存后重载插件生效，坏正则会跳过而不是整条流程炸掉
 - `whitelist`：全插件唯一白名单，填 UMO，**留空 = 不限制**，正则唤醒 / 持续唤醒 / 小模型判定都受它管
-- `analysis_provider_id`：判定用的小模型，留空则判定环节整体不生效
+- `analysis_provider_id`：判定用的小模型，留空则自动回退到当前默认供应商（通常是主模型）跑判定，不会静默放行
+- `analysis_fail_policy`：判定挂了（调用失败 / 输出不是合法 JSON）时的兜底，allow 放行、block 拦下；判定输出已做鲁棒解析，能剥掉 markdown 围栏和前后废话
 - 被点名不跳过判定：任何唤醒方式都会走一遍小模型
 - `inject_emotion`：关掉就只做拦不拦，不改 prompt
 
@@ -61,3 +62,5 @@ save_llm_reply_to_history  回复入自管历史
 ## 注意
 
 装这个之前请先把 `astrbot_plugin_wake_enhance` 和 `should_I_respond` 停用，否则唤醒判定会跑两遍。
+
+判定过程会在日志里留下完整痕迹（搜 `RTPM`）：`开始判定（来源 / 供应商）` → `判定模型原始回复` → `判定不回复 / 已注入情绪状态`。只看到「开始判定」没有「原始回复」说明调用挂了，连「开始判定」都没有说明判定环节根本没进。

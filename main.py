@@ -25,7 +25,7 @@ SOURCE_NATIVE = "native"        # AstrBot 原生唤醒（@ / 唤醒前缀 / 指�
     "astrbot_plugin_regex_trigger_pro_max",
     "辰林 & 小辰",
     "正则唤醒 + 持续唤醒 + 小模型二次判定，融合版触发插件 Pro Max",
-    "v1.0.0",
+    "v1.0.2",
     "https://github.com/idk114-514/should_I_respond",
 )
 class RegexTriggerProMax(Star):
@@ -185,11 +185,64 @@ class RegexTriggerProMax(Star):
         不管是原生 @、唤醒前缀，还是正则唤醒 / 持续唤醒这类软唤醒，
         只要在白名单里就一律走一遍小模型，保证情绪判定不被绕过。
         """
-        if not self._in_whitelist(event.unified_msg_origin):
-            return False
-        if not self.config.get("analysis_provider_id"):
-            return False
-        return True
+        return self._in_whitelist(event.unified_msg_origin)
+
+    async def _get_analysis_provider(self, event: AstrMessageEvent):
+        """拿判定用的供应商：优先配置里指定的小模型，没配或失效时回退到当前会话/默认供应商。
+
+        回退而不是放弃，否则正则软唤醒的消息会在没配置时全部直通主模型，
+        判定环节等于不存在。
+        """
+        provider_id = self.config.get("analysis_provider_id")
+        if provider_id:
+            provider = self.context.get_provider_by_id(provider_id)
+            if provider:
+                return provider
+            logger.warning(
+                f"[RTPM] 配置的判定供应商 {provider_id} 不存在，回退到当前默认供应商。"
+            )
+        try:
+            # 新版 AstrBot 是 get_using_provider_async，旧版只有同步的 get_using_provider
+            get_async = getattr(self.context, "get_using_provider_async", None)
+            if get_async is not None:
+                return await get_async(event.unified_msg_origin)
+            return self.context.get_using_provider(event.unified_msg_origin)
+        except Exception:
+            return None
+
+    async def _handle_analysis_fail(self, event: AstrMessageEvent, reason: str):
+        """判定环节挂掉的统一出口：按 fail_policy 决定放行还是拦下，不再无条件放行。"""
+        if self.config.get("analysis_fail_policy", "allow") == "block":
+            logger.warning(f"[RTPM] {reason}，fail_policy=block，拦下本条不回复。")
+            event.stop_event()
+        else:
+            logger.warning(f"[RTPM] {reason}，fail_policy=allow，放行。")
+
+    @staticmethod
+    def _extract_json(text: str) -> Optional[dict]:
+        """尽量从模型输出里抠出 JSON：直接解析 → 剥掉 markdown 代码围栏 → 正则兜底。
+
+        便宜的小模型经常在 JSON 前后加「好的，以下是结果」或 ``` 围栏，
+        原来的单正则抓不到就整个放行，这是「配了裁判还是看到就回」的主因之一。
+        """
+        text = (text or "").strip()
+        if not text:
+            return None
+        candidates = [text]
+        stripped = re.sub(r"^```[a-zA-Z]*\s*|\s*```$", "", text).strip()
+        if stripped != text:
+            candidates.append(stripped)
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            candidates.append(m.group(0))
+        for cand in candidates:
+            try:
+                obj = json.loads(cand)
+                if isinstance(obj, dict):
+                    return obj
+            except json.JSONDecodeError:
+                continue
+        return None
 
     @staticmethod
     def _format_history_entry(msg: dict) -> str:
@@ -221,9 +274,9 @@ class RegexTriggerProMax(Star):
             await self._save_history()
             return
 
-        provider = self.context.get_provider_by_id(self.config.get("analysis_provider_id"))
+        provider = await self._get_analysis_provider(event)
         if not provider:
-            logger.warning("[RTPM] 找不到分析用的供应商，跳过判定。")
+            logger.warning("[RTPM] 没有任何可用的 LLM 供应商跑判定，本条按放行处理。")
             await self._save_history()
             return
 
@@ -250,16 +303,20 @@ class RegexTriggerProMax(Star):
                 .replace("{current_message}", self._format_history_entry(user_entry))
             )
 
+            provider_desc = (
+                getattr(getattr(provider, "provider_config", None), "id", "")
+                or type(provider).__name__
+            )
+            logger.info(f"[RTPM] 开始判定（来源 {source}，供应商 {provider_desc}）")
+
             resp = await provider.text_chat(prompt=analysis_prompt)
             response_text = resp.completion_text or ""
+            logger.info(f"[RTPM] 判定模型原始回复：{response_text}")
 
-            json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
-            if not json_match:
-                logger.warning("[RTPM] 分析模型没吐出 JSON，按放行处理。")
-                await self._save_history()
+            result = self._extract_json(response_text)
+            if result is None:
+                await self._handle_analysis_fail(event, f"分析模型没吐出可解析的 JSON：{response_text[:200]}")
                 return
-
-            result = json.loads(json_match.group(0))
 
             if not result.get("should_reply", True):
                 logger.info(f"[RTPM] 判定不回复（来源 {source}）：{result.get('reason')}")
@@ -286,10 +343,9 @@ class RegexTriggerProMax(Star):
                 )
                 logger.info(f"[RTPM] 已注入情绪状态：{interest} / {feeling}")
 
-        except json.JSONDecodeError as e:
-            logger.error(f"[RTPM] 分析结果 JSON 解析失败，按放行处理：{e}")
         except Exception as e:
             logger.error(f"[RTPM] 分析过程出错：{e}", exc_info=True)
+            await self._handle_analysis_fail(event, f"分析模型调用出错：{e}")
         finally:
             await self._save_history()
 
