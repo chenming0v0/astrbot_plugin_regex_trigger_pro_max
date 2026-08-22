@@ -379,6 +379,7 @@
             <div class="field-grid">
               <div class="field-row full">
                 <div class="field-label">唤醒词正则 <span class="field-key">waking_regex</span></div>
+
                 <div id="tag-waking_regex"></div>
                 <div class="field-hint" data-hint="waking_regex"></div>
               </div>
@@ -417,31 +418,31 @@
             </div>
             <div class="field-grid">
               <div class="field-row">
-                <div class="field-label">判定用供应商 <span class="field-key">analysis_provider_id</span></div>
-                <div id="sel-analysis_provider_id"></div>
-                <div class="field-hint" data-hint="analysis_provider_id"></div>
+                <div class="field-label">判定用供应商 <span class="field-key">analysis.provider_id</span></div>
+                <div id="sel-analysis.provider_id"></div>
+                <div class="field-hint" data-hint="analysis.provider_id"></div>
               </div>
               <div class="field-row">
-                <div class="field-label">判定失败兜底 <span class="field-key">analysis_fail_policy</span></div>
-                <div id="sel-analysis_fail_policy"></div>
-                <div class="field-hint" data-hint="analysis_fail_policy"></div>
+                <div class="field-label">判定失败兜底 <span class="field-key">analysis.fail_policy</span></div>
+                <div id="sel-analysis.fail_policy"></div>
+                <div class="field-hint" data-hint="analysis.fail_policy"></div>
               </div>
               <div class="field-row">
-                <div class="field-label">随机回复概率 <span class="field-key">random_reply_chance</span></div>
-                <input type="number" class="control short" id="field-random_reply_chance" min="0" max="1" step="0.05">
-                <div class="field-hint" data-hint="random_reply_chance"></div>
+                <div class="field-label">随机回复概率 <span class="field-key">analysis.random_reply_chance</span></div>
+                <input type="number" class="control short" id="field-analysis.random_reply_chance" min="0" max="1" step="0.05">
+                <div class="field-hint" data-hint="analysis.random_reply_chance"></div>
               </div>
               <div class="field-row">
-                <div class="field-label">向主模型注入情绪 <span class="field-key">inject_emotion</span></div>
+                <div class="field-label">向主模型注入情绪 <span class="field-key">analysis.inject_emotion</span></div>
                 <div class="toggle-slot">
-                  <label class="toggle"><input type="checkbox" id="field-inject_emotion"><span class="toggle-track"></span></label>
+                  <label class="toggle"><input type="checkbox" id="field-analysis.inject_emotion"><span class="toggle-track"></span></label>
                 </div>
-                <div class="field-hint" data-hint="inject_emotion"></div>
+                <div class="field-hint" data-hint="analysis.inject_emotion"></div>
               </div>
               <div class="field-row full">
-                <div class="field-label">判定提示词 <span class="field-key">analysis_system_prompt</span></div>
-                <textarea class="control" id="field-analysis_system_prompt" rows="14" spellcheck="false"></textarea>
-                <div class="field-hint" data-hint="analysis_system_prompt"></div>
+                <div class="field-label">判定提示词 <span class="field-key">analysis.system_prompt</span></div>
+                <textarea class="control" id="field-analysis.system_prompt" rows="14" spellcheck="false"></textarea>
+                <div class="field-hint" data-hint="analysis.system_prompt"></div>
               </div>
             </div>
           </div>
@@ -454,21 +455,21 @@
             </div>
             <div class="field-grid">
               <div class="field-row full">
-                <div class="field-label">会话白名单 UMO <span class="field-key">whitelist</span></div>
+                <div class="field-label">会话白名单 UMO <span class="field-key">session.whitelist</span></div>
                 <div id="tag-whitelist"></div>
                 <div class="field-hint" data-hint="whitelist"></div>
               </div>
               <div class="field-row">
-                <div class="field-label">每会话最大历史条数 <span class="field-key">history_max_length</span></div>
-                <input type="number" class="control short" id="field-history_max_length" min="1" step="1">
-                <div class="field-hint" data-hint="history_max_length"></div>
+                <div class="field-label">每会话最大历史条数 <span class="field-key">session.history_max_length</span></div>
+                <input type="number" class="control short" id="field-session.history_max_length" min="1" step="1">
+                <div class="field-hint" data-hint="session.history_max_length"></div>
               </div>
               <div class="field-row">
-                <div class="field-label">历史记录里保存情绪 <span class="field-key">record_emotion_in_history</span></div>
+                <div class="field-label">历史记录里保存情绪 <span class="field-key">session.record_emotion_in_history</span></div>
                 <div class="toggle-slot">
-                  <label class="toggle"><input type="checkbox" id="field-record_emotion_in_history"><span class="toggle-track"></span></label>
+                  <label class="toggle"><input type="checkbox" id="field-session.record_emotion_in_history"><span class="toggle-track"></span></label>
                 </div>
-                <div class="field-hint" data-hint="record_emotion_in_history"></div>
+                <div class="field-hint" data-hint="session.record_emotion_in_history"></div>
               </div>
             </div>
           </div>
@@ -517,13 +518,11 @@
       { key: "history", label: "会话与历史", icon: "archive" }
     ];
 
-    var OBJECT_KEYS = { continuous_awakening: ["enable", "waking_interval", "reset_when_reply"] };
+    var OBJECT_KEYS = {
+      continuous_awakening: ["enable", "waking_interval", "reset_when_reply"]
+    };
 
-    var TOP_KEYS = [
-      "waking_regex", "continuous_awakening", "analysis_provider_id", "analysis_fail_policy",
-      "random_reply_chance", "inject_emotion", "whitelist", "history_max_length",
-      "record_emotion_in_history", "analysis_system_prompt"
-    ];
+    var TOP_KEYS = ["waking_regex", "continuous_awakening", "analysis", "session"];
 
     function $(id) { return document.getElementById(id); }
 
@@ -726,8 +725,8 @@
     /* ---------- 控件实例 ---------- */
     var tagRegex = makeTagEditor("tag-waking_regex", ".*小辰.*");
     var tagWhitelist = makeTagEditor("tag-whitelist", "aiocqhttp:GroupMessage:114514");
-    var selProvider = makeSelect("sel-analysis_provider_id", function (v) { providerName = v; });
-    var selPolicy = makeSelect("sel-analysis_fail_policy");
+    var selProvider = makeSelect("sel-analysis.provider_id", function (v) { providerName = v; });
+    var selPolicy = makeSelect("sel-analysis.fail_policy");
 
     function setFieldValue(key, value) {
       var el = $("field-" + key);
@@ -754,7 +753,7 @@
 
       $("kv-cont").textContent = data.continuous_enabled ? "已开启" : "已关闭";
       $("kv-regex").textContent = (data.regex_compiled || []).join("   ") || "（无）";
-      var wl = (lastValues.whitelist || []);
+      var wl = ((lastValues.session || {}).whitelist || []);
       $("kv-wl").textContent = wl.length ? wl.length + " 条（" + wl.join("、") + "）" : "不限制";
       var hist = data.history || {};
       var count = 0, total = 0;
@@ -794,19 +793,24 @@
 
     /* ---------- 保存 ---------- */
     function collectValues() {
-      var values = {};
-      TOP_KEYS.forEach(function (key) {
-        if (key === "waking_regex") { values[key] = tagRegex.get(); return; }
-        if (key === "whitelist") { values[key] = tagWhitelist.get(); return; }
-        if (OBJECT_KEYS[key]) {
-          var obj = {};
-          OBJECT_KEYS[key].forEach(function (sub) { obj[sub] = getFieldValue(key + "." + sub); });
-          values[key] = obj;
-          return;
+      var values = {
+        waking_regex: tagRegex.get(),
+        continuous_awakening: {},
+        analysis: {
+          provider_id: selProvider.get(),
+          fail_policy: selPolicy.get(),
+          random_reply_chance: getFieldValue("analysis.random_reply_chance"),
+          inject_emotion: getFieldValue("analysis.inject_emotion"),
+          system_prompt: getFieldValue("analysis.system_prompt")
+        },
+        session: {
+          whitelist: tagWhitelist.get(),
+          history_max_length: getFieldValue("session.history_max_length"),
+          record_emotion_in_history: getFieldValue("session.record_emotion_in_history")
         }
-        if (key === "analysis_provider_id") { values[key] = selProvider.get(); return; }
-        if (key === "analysis_fail_policy") { values[key] = selPolicy.get(); return; }
-        values[key] = getFieldValue(key);
+      };
+      OBJECT_KEYS.continuous_awakening.forEach(function (sub) {
+        values.continuous_awakening[sub] = getFieldValue("continuous_awakening." + sub);
       });
       return values;
     }
@@ -840,10 +844,13 @@
 
       renderHints();
 
+      var analysis = values.analysis || {};
+      var session = values.session || {};
+
       var provOpts = [{ value: "", label: "留空 = 使用当前默认供应商" }];
       (cfg.providers || []).forEach(function (p) { provOpts.push({ value: p, label: p }); });
       selProvider.setOptions(provOpts);
-      var wanted = values.analysis_provider_id || "";
+      var wanted = analysis.provider_id || "";
       if (wanted && (cfg.providers || []).indexOf(wanted) === -1) {
         provOpts.push({ value: wanted, label: wanted + "（已失效，请重选）" });
         selProvider.setOptions(provOpts);
@@ -855,16 +862,20 @@
         { value: "allow", label: "allow — 判定挂了照常回复" },
         { value: "block", label: "block — 判定挂了拦下不回" }
       ]);
-      selPolicy.set(values.analysis_fail_policy || "allow");
+      selPolicy.set(analysis.fail_policy || "allow");
 
       tagRegex.set(values.waking_regex || []);
-      tagWhitelist.set(values.whitelist || []);
+      tagWhitelist.set(session.whitelist || []);
 
       OBJECT_KEYS.continuous_awakening.forEach(function (sub) {
         setFieldValue("continuous_awakening." + sub, (values.continuous_awakening || {})[sub]);
       });
-      ["random_reply_chance", "inject_emotion", "history_max_length", "record_emotion_in_history", "analysis_system_prompt"]
-        .forEach(function (key) { setFieldValue(key, values[key]); });
+      ["random_reply_chance", "inject_emotion", "system_prompt"].forEach(function (sub) {
+        setFieldValue("analysis." + sub, analysis[sub]);
+      });
+      ["history_max_length", "record_emotion_in_history"].forEach(function (sub) {
+        setFieldValue("session." + sub, session[sub]);
+      });
 
       $("panels").classList.remove("is-hidden");
       $("save-btn").disabled = false;

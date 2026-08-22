@@ -48,8 +48,9 @@ save_llm_reply_to_history  回复入自管历史
 
 - `waking_regex`：唤醒正则，改完保存后重载插件生效，坏正则会跳过而不是整条流程炸掉
 - `whitelist`：全插件唯一白名单，填 UMO，**留空 = 不限制**，正则唤醒 / 持续唤醒 / 小模型判定都受它管
-- `analysis_provider_id`：判定用的小模型，留空则自动回退到当前默认供应商（通常是主模型）跑判定，不会静默放行
-- `analysis_fail_policy`：判定挂了（调用失败 / 输出不是合法 JSON）时的兜底，allow 放行、block 拦下；判定输出已做鲁棒解析，能剥掉 markdown 围栏和前后废话
+- v1.3 起配置按功能分组：`waking_regex` / `continuous_awakening` / `analysis`（判定供应商 `analysis.provider_id`、失败兜底 `analysis.fail_policy` 等）/ `session`（白名单、历史）；旧版平铺键会在加载时自动迁移
+- `analysis.provider_id`：判定用的小模型，留空则自动回退到当前默认供应商（通常是主模型）跑判定，不会静默放行
+- `analysis.fail_policy`：判定挂了（调用失败 / 输出不是合法 JSON）时的兜底，allow 放行、block 拦下；判定输出已做鲁棒解析，能剥掉 markdown 围栏和前后废话
 - 判定 JSON 新增 `exit_wake` 字段：小模型发现自己没被注意时可以输出 `exit_wake: true` 主动退出持续唤醒窗口，本条回不回仍由 `should_reply` 决定（允许回完最后一句再退场）
 - 被点名不跳过判定：任何唤醒方式都会走一遍小模型
 - `inject_emotion`：关掉就只做拦不拦，不改 prompt

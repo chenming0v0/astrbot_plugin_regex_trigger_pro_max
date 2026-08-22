@@ -21,7 +21,7 @@ SOURCE_CONTINUOUS = "continuous"  # 持续唤醒窗口内
 SOURCE_NATIVE = "native"        # AstrBot 原生唤醒（@ / 唤醒前缀 / 指令）
 
 PLUGIN_ID = "astrbot_plugin_regex_trigger_pro_max"
-PLUGIN_VERSION = "v1.2.1"
+PLUGIN_VERSION = "v1.3.0"
 
 try:
     from astrbot.api import web as astrbot_web
@@ -46,14 +46,27 @@ class RegexTriggerProMax(Star):
         4. 决定回复 -> 把 interest / feeling 注入 prompt
     """
 
+    # v1.2 及以前的平铺配置键 -> v1.3 分组结构
+    LEGACY_KEYS = {
+        "analysis_provider_id": ("analysis", "provider_id"),
+        "analysis_fail_policy": ("analysis", "fail_policy"),
+        "random_reply_chance": ("analysis", "random_reply_chance"),
+        "inject_emotion": ("analysis", "inject_emotion"),
+        "analysis_system_prompt": ("analysis", "system_prompt"),
+        "whitelist": ("session", "whitelist"),
+        "history_max_length": ("session", "history_max_length"),
+        "record_emotion_in_history": ("session", "record_emotion_in_history"),
+    }
+
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
         self.config = config
+        self._migrate_config()
 
         # ---------- 唤醒相关 ----------
         self.waking_regex: List[str] = config.get("waking_regex", []) or []
         self.c_awake: Dict[str, Any] = config.get("continuous_awakening", {}) or {}
-        self.whitelist: List[str] = config.get("whitelist", []) or []
+        self.whitelist: List[str] = self._session_cfg().get("whitelist", []) or []
         self.waking_sessions: Dict[str, Dict[str, float]] = {}
         self._compiled_regex: List[re.Pattern] = []
         self._compile_regex()
@@ -74,6 +87,29 @@ class RegexTriggerProMax(Star):
     # ==================================================================
     # 唤醒段：来自 wake_enhance
     # ==================================================================
+
+    def _analysis_cfg(self) -> Dict[str, Any]:
+        return self.config.get("analysis", {}) or {}
+
+    def _session_cfg(self) -> Dict[str, Any]:
+        return self.config.get("session", {}) or {}
+
+    def _migrate_config(self):
+        """把 v1.2 及以前的平铺配置键迁移到 v1.3 的分组结构，只需跑一次。"""
+        moved = False
+        for old_key, (group, sub) in self.LEGACY_KEYS.items():
+            if old_key in self.config:
+                self.config.setdefault(group, {})
+                self.config[group][sub] = self.config[old_key]
+                del self.config[old_key]
+                moved = True
+        if not moved:
+            return
+        try:
+            self.config.save_config()
+            logger.info("[RTPM] 旧版平铺配置已自动迁移为分组结构。")
+        except Exception as e:
+            logger.warning(f"[RTPM] 配置迁移完成但落盘失败：{e}")
 
     def _compile_regex(self):
         """预编译唤醒正则，坏表达式直接跳过而不是整条流程炸掉。"""
@@ -206,7 +242,7 @@ class RegexTriggerProMax(Star):
         回退而不是放弃，否则正则软唤醒的消息会在没配置时全部直通主模型，
         判定环节等于不存在。
         """
-        provider_id = self.config.get("analysis_provider_id")
+        provider_id = self._analysis_cfg().get("provider_id")
         if provider_id:
             provider = self.context.get_provider_by_id(provider_id)
             if provider:
@@ -225,7 +261,7 @@ class RegexTriggerProMax(Star):
 
     async def _handle_analysis_fail(self, event: AstrMessageEvent, reason: str):
         """判定环节挂掉的统一出口：按 fail_policy 决定放行还是拦下，不再无条件放行。"""
-        if self.config.get("analysis_fail_policy", "allow") == "block":
+        if self._analysis_cfg().get("fail_policy", "allow") == "block":
             logger.warning(f"[RTPM] {reason}，fail_policy=block，拦下本条不回复。")
             event.stop_event()
         else:
@@ -308,7 +344,7 @@ class RegexTriggerProMax(Star):
         awakening_context_str = wake_context_map.get(source, "")
 
         try:
-            template = self.config.get("analysis_system_prompt") or ""
+            template = self._analysis_cfg().get("system_prompt") or ""
             analysis_prompt = (
                 template.replace("{awakening_context}", awakening_context_str)
                 .replace("{persona}", persona_description)
@@ -343,7 +379,7 @@ class RegexTriggerProMax(Star):
                 await self._save_history()
                 return
 
-            chance = float(self.config.get("random_reply_chance", 1.0))
+            chance = float(self._analysis_cfg().get("random_reply_chance", 1.0))
             if random.random() > chance:
                 logger.info(f"[RTPM] 判定回复但随机检定未通过（{chance * 100:.0f}%），拦下。")
                 event.stop_event()
@@ -354,7 +390,7 @@ class RegexTriggerProMax(Star):
             feeling = result.get("feeling", "neutral")
             event.set_extra(EMOTION_KEY, {"interest": interest, "feeling": feeling})
 
-            if self.config.get("inject_emotion", True):
+            if self._analysis_cfg().get("inject_emotion", True):
                 req.prompt = (
                     f'User\'s message is: "{current_message}"\n\n'
                     f"[[System Note: Your current state is - Interest: '{interest}', "
@@ -377,7 +413,7 @@ class RegexTriggerProMax(Star):
             return
 
         entry = {"role": "assistant", "content": resp.completion_text}
-        if self.config.get("record_emotion_in_history", False):
+        if self._session_cfg().get("record_emotion_in_history", False):
             emotion = event.get_extra(EMOTION_KEY)
             if emotion:
                 entry["state"] = emotion
@@ -503,7 +539,7 @@ class RegexTriggerProMax(Star):
         """配置变更后刷新运行时状态，免重载插件即可生效。"""
         self.waking_regex = self.config.get("waking_regex", []) or []
         self.c_awake = self.config.get("continuous_awakening", {}) or {}
-        self.whitelist = self.config.get("whitelist", []) or []
+        self.whitelist = self._session_cfg().get("whitelist", []) or []
         self._compile_regex()
 
     async def _webui_get_status(self):
