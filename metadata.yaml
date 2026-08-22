@@ -7,7 +7,7 @@ help: |
     - 唤醒后的消息先交给判定模型判断该不该回，判要回才调主模型
     - 判定模型可输出 exit_wake 主动退出持续唤醒
     - 持续唤醒、白名单、情绪注入等均在 WebUI / 配置面板调整
-version: v1.3.1
+version: v1.3.2
 author: 小辰
 repo: https://github.com/chenming0v0/astrbot_plugin_regex_trigger_pro_max
 pages:
