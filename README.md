@@ -1,8 +1,6 @@
 # astrbot_plugin_regex_trigger_pro_max
 
-把 `astrbot_plugin_wake_enhance`（正则唤醒 / 持续唤醒）和 `should_I_respond`（小模型判定该不该回）融合成一个插件。
-
-原插件源码保留在 `temp/` 目录下，只作参考，AstrBot 不会加载它们。
+把 `astrbot_plugin_wake_enhance`（正则唤醒 / 持续唤醒）和 `should_I_respond`（小模型判定该不该回）融合成一个插件，并加上了自带 WebUI 控制台与更多判定策略。
 
 ## WebUI 控制台
 
