@@ -459,6 +459,11 @@
                 <textarea class="control" id="field-analysis.wake_context_native" rows="2" spellcheck="false"></textarea>
                 <div class="field-hint" data-hint="analysis.wake_context_native"></div>
               </div>
+              <div class="field-row full">
+                <div class="field-label">退场提示词 <span class="field-key">analysis.exit_wake_hint</span></div>
+                <textarea class="control" id="field-analysis.exit_wake_hint" rows="3" spellcheck="false"></textarea>
+                <div class="field-hint" data-hint="analysis.exit_wake_hint"></div>
+              </div>
             </div>
           </div>
 
@@ -819,7 +824,8 @@
           system_prompt: getFieldValue("analysis.system_prompt"),
           wake_context_regex: getFieldValue("analysis.wake_context_regex"),
           wake_context_continuous: getFieldValue("analysis.wake_context_continuous"),
-          wake_context_native: getFieldValue("analysis.wake_context_native")
+          wake_context_native: getFieldValue("analysis.wake_context_native"),
+          exit_wake_hint: getFieldValue("analysis.exit_wake_hint")
         },
         session: {
           whitelist: tagWhitelist.get(),
@@ -893,7 +899,8 @@
         setFieldValue("continuous_awakening." + sub, (values.continuous_awakening || {})[sub]);
       });
       ["random_reply_chance", "inject_emotion", "system_prompt",
-       "wake_context_regex", "wake_context_continuous", "wake_context_native"].forEach(function (sub) {
+       "wake_context_regex", "wake_context_continuous", "wake_context_native",
+       "exit_wake_hint"].forEach(function (sub) {
         setFieldValue("analysis." + sub, analysis[sub]);
       });
       ["history_max_length", "record_emotion_in_history"].forEach(function (sub) {

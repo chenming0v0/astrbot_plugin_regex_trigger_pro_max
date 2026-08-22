@@ -21,7 +21,7 @@ SOURCE_CONTINUOUS = "continuous"  # 持续唤醒窗口内
 SOURCE_NATIVE = "native"        # AstrBot 原生唤醒（@ / 唤醒前缀 / 指令）
 
 PLUGIN_ID = "astrbot_plugin_regex_trigger_pro_max"
-PLUGIN_VERSION = "v1.4.0"
+PLUGIN_VERSION = "v1.4.1"
 
 try:
     from astrbot.api import web as astrbot_web
@@ -404,6 +404,14 @@ class RegexTriggerProMax(Star):
                     f"Feeling: '{feeling}'. You MUST respond according to this state.]]"
                 )
                 logger.info(f"[RTPM] 已注入情绪状态：{interest} / {feeling}")
+
+            # 退场提示：判定要退出唤醒且本条要回复，引导主模型把回复说成告别收尾
+            exit_hint = analysis_cfg.get("exit_wake_hint") or ""
+            if result.get("exit_wake") and exit_hint:
+                req.prompt = f"{req.prompt or ''}\n\n" + exit_hint.replace(
+                    "{reason}", str(result.get("reason", ""))
+                )
+                logger.info("[RTPM] 已注入退场提示。")
 
         except Exception as e:
             logger.error(f"[RTPM] 分析过程出错：{e}", exc_info=True)
