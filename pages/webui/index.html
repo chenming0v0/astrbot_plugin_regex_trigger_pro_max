@@ -847,14 +847,18 @@
       var analysis = values.analysis || {};
       var session = values.session || {};
 
+      var provList = cfg.providers || [];
       var provOpts = [{ value: "", label: "留空 = 使用当前默认供应商" }];
-      (cfg.providers || []).forEach(function (p) { provOpts.push({ value: p, label: p }); });
-      selProvider.setOptions(provOpts);
+      provList.forEach(function (p) { provOpts.push({ value: p.id, label: p.label || p.id }); });
       var wanted = analysis.provider_id || "";
-      if (wanted && (cfg.providers || []).indexOf(wanted) === -1) {
-        provOpts.push({ value: wanted, label: wanted + "（已失效，请重选）" });
-        selProvider.setOptions(provOpts);
+      var matched = provList.some(function (p) { return p.id === wanted; });
+      if (wanted && !matched) {
+        var note = provList.length
+          ? wanted + "（已失效，请重选）"
+          : wanted + "（暂时取不到供应商列表，已保留原值）";
+        provOpts.push({ value: wanted, label: note });
       }
+      selProvider.setOptions(provOpts);
       selProvider.set(wanted);
       providerName = wanted;
 

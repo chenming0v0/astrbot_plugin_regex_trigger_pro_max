@@ -21,7 +21,7 @@ SOURCE_CONTINUOUS = "continuous"  # 持续唤醒窗口内
 SOURCE_NATIVE = "native"        # AstrBot 原生唤醒（@ / 唤醒前缀 / 指令）
 
 PLUGIN_ID = "astrbot_plugin_regex_trigger_pro_max"
-PLUGIN_VERSION = "v1.3.0"
+PLUGIN_VERSION = "v1.3.1"
 
 try:
     from astrbot.api import web as astrbot_web
@@ -451,12 +451,23 @@ class RegexTriggerProMax(Star):
     async def _webui_get_config(self):
         providers = []
         try:
+            # AstrBot 新版 Provider 用 meta() 暴露 id/model（同 AstrNa 的取法），旧版退回属性直取
             for p in self.context.get_all_providers():
-                pid = getattr(getattr(p, "provider_config", None), "id", "") or getattr(p, "id", "")
+                pid = ""
+                label = ""
+                meta_getter = getattr(p, "meta", None)
+                meta = meta_getter() if callable(meta_getter) else None
+                if meta is not None:
+                    pid = getattr(meta, "id", "") or ""
+                    model = str(getattr(meta, "model", "") or "").strip()
+                    label = f"{pid}（{model}）" if model and model != pid else pid
+                if not pid:
+                    pid = getattr(getattr(p, "provider_config", None), "id", "") or getattr(p, "id", "") or ""
+                    label = pid
                 if pid:
-                    providers.append(pid)
+                    providers.append({"id": pid, "label": label})
         except Exception:
-            pass
+            providers = []
         values = {key: self.config.get(key) for key in self._schema_cache}
         return astrbot_web.json_response({
             "version": PLUGIN_VERSION,
