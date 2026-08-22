@@ -3,114 +3,168 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bot唤醒Pro Max — 控制台</title>
-  <link rel="stylesheet" href="./console.css">
+  <title>Bot唤醒Pro Max 控制台</title>
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <div class="scanlines" aria-hidden="true"></div>
-
-  <header class="topbar">
-    <div class="brand">
-      <img class="logo" src="./logo.png" alt="Bot唤醒Pro Max">
-      <div class="brand-text">
-        <h1>BOT唤醒 <span class="accent">PRO MAX</span></h1>
-        <p class="sub">regex / continuous / judge&nbsp;&nbsp;<span id="ver" class="accent">v?</span></p>
+  <header class="appbar">
+    <div class="appbar-inner">
+      <div class="brand">
+        <img class="logo" src="./logo.png" alt="logo">
+        <div class="brand-text">
+          <h1>Bot唤醒 Pro Max</h1>
+          <p>正则唤醒 · 持续唤醒 · 小模型判定 <span class="ver" id="ver"></span></p>
+        </div>
       </div>
+      <button id="save-btn" class="btn-filled" type="button" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        <span>保存</span>
+      </button>
     </div>
-    <button id="save-btn" class="btn primary" type="button" disabled>保存配置</button>
   </header>
 
-  <section id="status-bar" class="card statusbar">
-    <div class="status-item"><span class="k">持续唤醒</span><span id="st-cont" class="v">--</span></div>
-    <div class="status-item"><span class="k">唤醒正则</span><span id="st-regex" class="v">--</span></div>
-    <div class="status-item wide"><span class="k">唤醒中的会话</span><span id="st-sessions" class="v">--</span></div>
-  </section>
+  <main class="page">
 
-  <main id="panels" class="hidden">
-    <section class="card">
-      <h2>// 唤醒设置</h2>
-      <div class="field">
-        <label for="field-waking_regex">唤醒词正则 <code>waking_regex</code></label>
-        <textarea id="field-waking_regex" rows="4" spellcheck="false" placeholder=".*小辰.*"></textarea>
-        <p class="hint" data-hint="waking_regex"></p>
-      </div>
-      <fieldset class="subcard">
-        <legend>持续唤醒 <code>continuous_awakening</code></legend>
-        <div class="field inline">
-          <label for="field-continuous_awakening.enable">启用群聊持续唤醒 <code>enable</code></label>
-          <input type="checkbox" id="field-continuous_awakening.enable">
-          <p class="hint" data-hint="continuous_awakening.enable"></p>
+    <section class="card" id="status-card">
+      <h2 class="card-title">运行状态</h2>
+      <div class="status-grid">
+        <div class="stat">
+          <div class="stat-label">持续唤醒</div>
+          <div class="stat-value" id="st-cont">—</div>
         </div>
+        <div class="stat">
+          <div class="stat-label">生效的正则</div>
+          <div class="stat-value mono" id="st-regex">—</div>
+        </div>
+        <div class="stat stat-wide">
+          <div class="stat-label">唤醒中的会话</div>
+          <div class="stat-value" id="st-sessions">—</div>
+        </div>
+      </div>
+    </section>
+
+    <div id="panels" class="hidden">
+
+      <section class="card">
+        <h2 class="card-title">唤醒</h2>
+
         <div class="field">
-          <label for="field-continuous_awakening.waking_interval">唤醒持续时长（秒） <code>waking_interval</code></label>
-          <input type="number" id="field-continuous_awakening.waking_interval" min="5" step="1">
-          <p class="hint" data-hint="continuous_awakening.waking_interval"></p>
+          <div class="field-label">唤醒词正则 <code>waking_regex</code></div>
+          <div class="list-editor" id="list-waking_regex"></div>
+          <div class="field-hint" data-hint="waking_regex"></div>
         </div>
-        <div class="field inline">
-          <label for="field-continuous_awakening.reset_when_reply">回复时重置窗口 <code>reset_when_reply</code></label>
-          <input type="checkbox" id="field-continuous_awakening.reset_when_reply">
-          <p class="hint" data-hint="continuous_awakening.reset_when_reply"></p>
+
+        <div class="subsection">
+          <div class="subsection-title">持续唤醒 <code>continuous_awakening</code></div>
+
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-title">启用群聊持续唤醒</div>
+              <div class="setting-desc" data-hint="continuous_awakening.enable"></div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="field-continuous_awakening.enable">
+              <span class="track"></span><span class="thumb"></span>
+            </label>
+          </div>
+
+          <div class="field">
+            <div class="field-label" for="field-continuous_awakening.waking_interval">唤醒持续时长（秒） <code>waking_interval</code></div>
+            <input type="number" id="field-continuous_awakening.waking_interval" min="5" step="1" class="input-short">
+            <div class="field-hint" data-hint="continuous_awakening.waking_interval"></div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-title">回复时重置窗口</div>
+              <div class="setting-desc" data-hint="continuous_awakening.reset_when_reply"></div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="field-continuous_awakening.reset_when_reply">
+              <span class="track"></span><span class="thumb"></span>
+            </label>
+          </div>
         </div>
-      </fieldset>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">小模型判定</h2>
+
+        <div class="field">
+          <div class="field-label" for="field-analysis_provider_id">判定用供应商 <code>analysis_provider_id</code></div>
+          <select id="field-analysis_provider_id"></select>
+          <div class="field-hint" data-hint="analysis_provider_id"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label" for="field-analysis_fail_policy">判定失败兜底 <code>analysis_fail_policy</code></div>
+          <select id="field-analysis_fail_policy">
+            <option value="allow">allow — 判定挂了照常回复</option>
+            <option value="block">block — 判定挂了拦下不回</option>
+          </select>
+          <div class="field-hint" data-hint="analysis_fail_policy"></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-text">
+            <div class="setting-title">向主模型注入情绪</div>
+            <div class="setting-desc" data-hint="inject_emotion"></div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="field-inject_emotion">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <div class="field-label" for="field-random_reply_chance">随机回复概率 0.0 – 1.0 <code>random_reply_chance</code></div>
+          <input type="number" id="field-random_reply_chance" min="0" max="1" step="0.05" class="input-short">
+          <div class="field-hint" data-hint="random_reply_chance"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label" for="field-analysis_system_prompt">判定提示词 <code>analysis_system_prompt</code></div>
+          <textarea id="field-analysis_system_prompt" rows="14" spellcheck="false" class="mono"></textarea>
+          <div class="field-hint" data-hint="analysis_system_prompt"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">会话与历史</h2>
+
+        <div class="field">
+          <div class="field-label">会话白名单 UMO <code>whitelist</code></div>
+          <div class="list-editor" id="list-whitelist"></div>
+          <div class="field-hint" data-hint="whitelist"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label" for="field-history_max_length">每会话最大历史条数 <code>history_max_length</code></div>
+          <input type="number" id="field-history_max_length" min="1" step="1" class="input-short">
+          <div class="field-hint" data-hint="history_max_length"></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-text">
+            <div class="setting-title">历史记录里保存情绪</div>
+            <div class="setting-desc" data-hint="record_emotion_in_history"></div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="field-record_emotion_in_history">
+            <span class="track"></span><span class="thumb"></span>
+          </label>
+        </div>
+      </section>
+
+    </div>
+
+    <section class="card hidden" id="no-bridge">
+      <h2 class="card-title">无法连接控制台</h2>
+      <p class="muted">检测不到 AstrBot 插件页面环境。</p>
+      <p class="muted">请在 <strong>AstrBot WebUI → 插件管理 → Bot唤醒Pro Max</strong> 的插件详情页里打开本控制台。</p>
     </section>
 
-    <section class="card">
-      <h2>// 小模型判定</h2>
-      <div class="field">
-        <label for="field-analysis_provider_id">判定用供应商 <code>analysis_provider_id</code></label>
-        <select id="field-analysis_provider_id"></select>
-        <p class="hint" data-hint="analysis_provider_id"></p>
-      </div>
-      <div class="field">
-        <label for="field-analysis_fail_policy">判定失败兜底 <code>analysis_fail_policy</code></label>
-        <select id="field-analysis_fail_policy">
-          <option value="allow">allow — 判定挂了照常回复</option>
-          <option value="block">block — 判定挂了拦下不回</option>
-        </select>
-        <p class="hint" data-hint="analysis_fail_policy"></p>
-      </div>
-      <div class="field inline">
-        <label for="field-inject_emotion">向主模型注入情绪 <code>inject_emotion</code></label>
-        <input type="checkbox" id="field-inject_emotion">
-        <p class="hint" data-hint="inject_emotion"></p>
-      </div>
-      <div class="field">
-        <label for="field-random_reply_chance">随机回复概率 0.0–1.0 <code>random_reply_chance</code></label>
-        <input type="number" id="field-random_reply_chance" min="0" max="1" step="0.05">
-        <p class="hint" data-hint="random_reply_chance"></p>
-      </div>
-      <div class="field">
-        <label for="field-analysis_system_prompt">判定提示词 <code>analysis_system_prompt</code></label>
-        <textarea id="field-analysis_system_prompt" rows="14" spellcheck="false" class="prompt-box"></textarea>
-        <p class="hint" data-hint="analysis_system_prompt"></p>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>// 会话与历史</h2>
-      <div class="field">
-        <label for="field-whitelist">会话白名单 UMO <code>whitelist</code></label>
-        <textarea id="field-whitelist" rows="3" spellcheck="false" placeholder="aiocqhttp:GroupMessage:114514&#10;留空 = 不限制"></textarea>
-        <p class="hint" data-hint="whitelist"></p>
-      </div>
-      <div class="field">
-        <label for="field-history_max_length">每会话最大历史条数 <code>history_max_length</code></label>
-        <input type="number" id="field-history_max_length" min="1" step="1">
-        <p class="hint" data-hint="history_max_length"></p>
-      </div>
-      <div class="field inline">
-        <label for="field-record_emotion_in_history">历史记录里存情绪 <code>record_emotion_in_history</code></label>
-        <input type="checkbox" id="field-record_emotion_in_history">
-        <p class="hint" data-hint="record_emotion_in_history"></p>
-      </div>
-    </section>
   </main>
-
-  <div id="no-bridge" class="card hidden">
-    <h2>// 离线模式</h2>
-    <p>检测不到 AstrBot 插件页面环境。</p>
-    <p>请在 <span class="accent">AstrBot WebUI → 插件管理 → Bot唤醒Pro Max</span> 的插件详情页里打开本控制台。</p>
-  </div>
 
   <div id="toast" class="toast hidden" role="status"></div>
 
