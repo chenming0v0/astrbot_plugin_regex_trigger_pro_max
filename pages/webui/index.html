@@ -114,6 +114,9 @@
 
   <div id="toast" class="toast hidden" role="status"></div>
 
+  <!-- AstrBot 会在返回页面时自动注入桥 SDK，但注入晚于普通脚本执行；
+       显式引入保证 app.js 运行前 window.AstrBotPluginPage 已就绪（本地直接打开时 404，走离线提示） -->
+  <script src="/api/plugin/page/bridge-sdk.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

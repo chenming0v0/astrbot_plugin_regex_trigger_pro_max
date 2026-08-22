@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  var bridge = window.AstrBotPluginPage;
+  var bridge = null;
   var schema = null;
   var statusTimer = null;
 
@@ -178,15 +178,33 @@
     );
   }
 
+  function waitForBridge(timeoutMs) {
+    // 桥由宿主注入，可能晚于本脚本执行（index.html 已显式引入 SDK，这里再兜底轮询）
+    return new Promise(function (resolve) {
+      if (window.AstrBotPluginPage) { resolve(window.AstrBotPluginPage); return; }
+      var waited = 0;
+      var timer = setInterval(function () {
+        if (window.AstrBotPluginPage) { clearInterval(timer); resolve(window.AstrBotPluginPage); return; }
+        waited += 100;
+        if (waited >= timeoutMs) { clearInterval(timer); resolve(null); }
+      }, 100);
+    });
+  }
+
   function boot() {
-    if (!bridge || typeof bridge.apiGet !== "function") {
-      $("no-bridge").classList.remove("hidden");
-      return;
-    }
-    var ready = bridge.ready ? bridge.ready() : Promise.resolve();
-    ready.then(function () {
+    waitForBridge(4000).then(function (b) {
+      if (!b || typeof b.apiGet !== "function") {
+        $("no-bridge").classList.remove("hidden");
+        return null;
+      }
+      bridge = b;
+      var ready = bridge.ready ? bridge.ready() : Promise.resolve();
+      return ready;
+    }).then(function (okToLoad) {
+      if (!okToLoad || !bridge) return;
       return bridge.apiGet("webui/config");
     }).then(function (cfg) {
+      if (!cfg) return;
       schema = cfg.schema || {};
       $("ver").textContent = cfg.version || "";
 

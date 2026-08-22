@@ -1,0 +1,8 @@
+{
+  "pages": {
+    "webui": {
+      "title": "Bot唤醒Pro Max 控制台",
+      "description": "终端风配置控制台：编辑唤醒/判定配置，实时查看持续唤醒窗口"
+    }
+  }
+}
