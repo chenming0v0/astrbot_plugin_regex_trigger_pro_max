@@ -494,6 +494,53 @@
             </div>
           </div>
 
+          <div class="settings-panel is-hidden" data-panel="docs">
+        <div class="group-head">
+          <div class="group-title">占位符说明</div>
+          <div class="group-desc">判定链路各配置项支持的占位符及其注入内容。</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="width:190px">占位符</th><th style="width:150px">生效位置</th><th>注入的内容</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="mono">{persona}</td>
+                <td>判定提示词</td>
+                <td>当前会话生效人格的系统提示词。从 AstrBot 会话的人格设置读取；读不到时回退本次请求的系统提示词；两者都没有则注入空白。</td>
+              </tr>
+              <tr>
+                <td class="mono">{history}</td>
+                <td>判定提示词</td>
+                <td>插件自管的会话聊天记录（不是 AstrBot 的对话上下文），包含群友和 Bot 的发言，每条带发言人昵称 / ID，用户消息还带唤醒来源标记。条数上限由「每会话最大历史条数」控制；没有历史时注入 No previous conversation history.。</td>
+              </tr>
+              <tr>
+                <td class="mono">{current_message}</td>
+                <td>判定提示词</td>
+                <td>当前正在判定的这条用户消息。若本条是被 @ / 唤醒前缀触发的，消息前会额外加 [Direct Mention] 前缀提示判定模型。</td>
+              </tr>
+              <tr>
+                <td class="mono">{awakening_context}</td>
+                <td>判定提示词</td>
+                <td>由本条消息的唤醒来源决定，取自「来源提示词」三项配置：正则触发 → analysis.wake_context_regex；持续唤醒窗口内 → analysis.wake_context_continuous；被 @ / 唤醒前缀 / 指令 → analysis.wake_context_native。</td>
+              </tr>
+              <tr>
+                <td class="mono">{reason}</td>
+                <td>退场提示词</td>
+                <td>判定模型在 JSON 输出的 reason 字段里给出的理由原文（例如「群友在骂人」），可用于让告别语贴合场景。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="object-block" style="margin-top:16px">
+          <div class="object-title">补充说明</div>
+          <div class="kv-list">
+            <div class="kv-row"><div class="kv-k">判定提示词</div><div class="kv-v">支持以上前四个占位符，写哪个就替换哪个，不写的原样保留。</div></div>
+            <div class="kv-row"><div class="kv-k">来源提示词</div><div class="kv-v">纯文本注入，不支持占位符；留空时回退内置默认文案。</div></div>
+            <div class="kv-row"><div class="kv-k">退场提示词</div><div class="kv-v">仅支持 {reason}；留空时退场不做任何注入，安安静静走。</div></div>
+            <div class="kv-row"><div class="kv-k">判定输出</div><div class="kv-v">判定模型固定输出 JSON：interest（兴趣）、feeling（感受）、should_reply（要不要回）、exit_wake（要不要退出唤醒）、reason（理由）。</div></div>
+          </div>
+        </div>
+          </div>
         </div>
       </section>
     </div>
@@ -528,14 +575,16 @@
       activity: '<svg class="icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
       radio: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
       cpu: '<svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>',
-      archive: '<svg class="icon" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>'
+      archive: '<svg class="icon" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>',
+      book: '<svg class="icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'
     };
 
     var NAV_ITEMS = [
       { key: "status", label: "运行状态", icon: "activity" },
       { key: "wake", label: "唤醒", icon: "radio" },
       { key: "judge", label: "小模型判定", icon: "cpu" },
-      { key: "history", label: "会话与历史", icon: "archive" }
+      { key: "history", label: "会话与历史", icon: "archive" },
+      { key: "docs", label: "占位符说明", icon: "book" }
     ];
 
     var OBJECT_KEYS = {
