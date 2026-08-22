@@ -444,6 +444,21 @@
                 <textarea class="control" id="field-analysis.system_prompt" rows="14" spellcheck="false"></textarea>
                 <div class="field-hint" data-hint="analysis.system_prompt"></div>
               </div>
+              <div class="field-row full">
+                <div class="field-label">来源提示词 · 正则触发 <span class="field-key">analysis.wake_context_regex</span></div>
+                <textarea class="control" id="field-analysis.wake_context_regex" rows="2" spellcheck="false"></textarea>
+                <div class="field-hint" data-hint="analysis.wake_context_regex"></div>
+              </div>
+              <div class="field-row full">
+                <div class="field-label">来源提示词 · 持续唤醒触发 <span class="field-key">analysis.wake_context_continuous</span></div>
+                <textarea class="control" id="field-analysis.wake_context_continuous" rows="2" spellcheck="false"></textarea>
+                <div class="field-hint" data-hint="analysis.wake_context_continuous"></div>
+              </div>
+              <div class="field-row full">
+                <div class="field-label">来源提示词 · @ 触发 <span class="field-key">analysis.wake_context_native</span></div>
+                <textarea class="control" id="field-analysis.wake_context_native" rows="2" spellcheck="false"></textarea>
+                <div class="field-hint" data-hint="analysis.wake_context_native"></div>
+              </div>
             </div>
           </div>
 
@@ -801,7 +816,10 @@
           fail_policy: selPolicy.get(),
           random_reply_chance: getFieldValue("analysis.random_reply_chance"),
           inject_emotion: getFieldValue("analysis.inject_emotion"),
-          system_prompt: getFieldValue("analysis.system_prompt")
+          system_prompt: getFieldValue("analysis.system_prompt"),
+          wake_context_regex: getFieldValue("analysis.wake_context_regex"),
+          wake_context_continuous: getFieldValue("analysis.wake_context_continuous"),
+          wake_context_native: getFieldValue("analysis.wake_context_native")
         },
         session: {
           whitelist: tagWhitelist.get(),
@@ -874,7 +892,8 @@
       OBJECT_KEYS.continuous_awakening.forEach(function (sub) {
         setFieldValue("continuous_awakening." + sub, (values.continuous_awakening || {})[sub]);
       });
-      ["random_reply_chance", "inject_emotion", "system_prompt"].forEach(function (sub) {
+      ["random_reply_chance", "inject_emotion", "system_prompt",
+       "wake_context_regex", "wake_context_continuous", "wake_context_native"].forEach(function (sub) {
         setFieldValue("analysis." + sub, analysis[sub]);
       });
       ["history_max_length", "record_emotion_in_history"].forEach(function (sub) {

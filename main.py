@@ -21,7 +21,7 @@ SOURCE_CONTINUOUS = "continuous"  # 持续唤醒窗口内
 SOURCE_NATIVE = "native"        # AstrBot 原生唤醒（@ / 唤醒前缀 / 指令）
 
 PLUGIN_ID = "astrbot_plugin_regex_trigger_pro_max"
-PLUGIN_VERSION = "v1.3.2"
+PLUGIN_VERSION = "v1.4.0"
 
 try:
     from astrbot.api import web as astrbot_web
@@ -336,10 +336,17 @@ class RegexTriggerProMax(Star):
             or "No previous conversation history."
         )
 
-        wake_context_map = {
+        # 三种唤醒来源写入 {awakening_context} 的文案，可在配置里自定义
+        wake_defaults = {
             SOURCE_REGEX: "本条消息命中了唤醒词正则，属于软唤醒，不一定是在直接跟你说话，请谨慎判断。",
             SOURCE_CONTINUOUS: "本条消息处于持续唤醒窗口内，可能只是群友之间在聊天，请谨慎判断。",
             SOURCE_NATIVE: "本条消息直接点名了你，通常应当回复。",
+        }
+        analysis_cfg = self._analysis_cfg()
+        wake_context_map = {
+            SOURCE_REGEX: analysis_cfg.get("wake_context_regex") or wake_defaults[SOURCE_REGEX],
+            SOURCE_CONTINUOUS: analysis_cfg.get("wake_context_continuous") or wake_defaults[SOURCE_CONTINUOUS],
+            SOURCE_NATIVE: analysis_cfg.get("wake_context_native") or wake_defaults[SOURCE_NATIVE],
         }
         awakening_context_str = wake_context_map.get(source, "")
 
