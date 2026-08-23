@@ -9,7 +9,7 @@ help: |
     - 判定模型可输出 exit_wake 主动退出持续唤醒
     - 判定通过后给消息贴「思考中」表情，回复完成 / 调用工具 / 超时各会切换表情状态
     - 持续唤醒、白名单、情绪注入、贴表情等均在 WebUI / 配置面板调整
-version: v1.5.1
+version: v1.5.2
 author: 小辰
 repo: https://github.com/chenming0v0/astrbot_plugin_regex_trigger_pro_max
 tags:
