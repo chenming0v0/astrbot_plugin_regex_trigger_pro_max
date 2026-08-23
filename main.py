@@ -21,7 +21,7 @@ SOURCE_CONTINUOUS = "continuous"  # 持续唤醒窗口内
 SOURCE_NATIVE = "native"        # AstrBot 原生唤醒（@ / 唤醒前缀 / 指令）
 
 PLUGIN_ID = "astrbot_plugin_regex_trigger_pro_max"
-PLUGIN_VERSION = "v1.5.0"
+PLUGIN_VERSION = "v1.5.1"
 
 try:
     from astrbot.api import web as astrbot_web
@@ -39,7 +39,7 @@ except ImportError:  # 非 aiocqhttp 环境也能装，贴表情功能整体跳�
 @register(
     PLUGIN_ID,
     "辰林 & 小辰",
-    "Bot唤醒Pro Max：正则唤醒 + 持续唤醒 + 小模型二次判定 + 处理状态贴表情，自带 WebUI 控制台",
+    "自带 WebUI 控制台！正则唤醒 + 持续唤醒 + 小模型二次判定唤醒 + 确定唤醒才贴表情，融合三个插件的 Pro Max 版本",
     PLUGIN_VERSION,
     "https://github.com/chenming0v0/astrbot_plugin_regex_trigger_pro_max",
 )

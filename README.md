@@ -1,6 +1,14 @@
 # astrbot_plugin_regex_trigger_pro_max
 
-把 `astrbot_plugin_wake_enhance`（正则唤醒 / 持续唤醒）、`should_I_respond`（小模型判定该不该回）和 `astrbot_plugin_iamthinking`（贴表情标记处理状态）融合成一个插件，并加上了自带 WebUI 控制台与更多判定策略。融合怪 Pro Max，装这一个就够。
+**融合三个插件的 Pro Max 融合怪，自带 WebUI 控制台，装这一个就够：**
+
+| 融合来源 | 拿来了什么 |
+| --- | --- |
+| `astrbot_plugin_wake_enhance` | 正则唤醒 / 持续唤醒 |
+| `should_I_respond` | 小模型二次判定（该不该回） |
+| `astrbot_plugin_iamthinking` | 处理状态贴表情（并修掉了原版判定前就贴的老毛病） |
+
+在此之上还加了自带 WebUI 控制台与更多判定策略。
 
 ## WebUI 控制台
 
@@ -8,12 +16,17 @@ v1.1.0 起自带终端风控制台（页面机制参考 AstrNa 的插件页面�
 
 ## 为什么要融合
 
-两个插件分开装的时候，唤醒流程是割裂的：
+三个插件分开装的时候，流程是割裂的：
 
 - wake_enhance 只管把 `is_at_or_wake_command` 置成 True，不区分是正则蹭到的还是真被 @ 了
 - should_I_respond 不管唤醒来源，一律丢给小模型判一遍，被直接 @ 也可能判成不回，白烧 token 还显得不理人
+- iamthinking 把「思考中」表情挂在判定**之前**的钩子上，凡进 LLM 阶段就贴——被小模型拦下不回的消息也先贴了表情，而且之后再没人给它收尾，干等两分钟变成「失败」表情，群友看着一头雾水
 
-融合之后引入了**唤醒来源**的概念：
+融合之后各自的老毛病都修了。
+
+### 唤醒来源
+
+引入了**唤醒来源**的概念：
 
 | 来源 | 含义 | 判定提示 |
 | --- | --- | --- |
