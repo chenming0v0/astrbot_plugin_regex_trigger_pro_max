@@ -1,6 +1,6 @@
 # astrbot_plugin_regex_trigger_pro_max
 
-把 `astrbot_plugin_wake_enhance`（正则唤醒 / 持续唤醒）和 `should_I_respond`（小模型判定该不该回）融合成一个插件，并加上了自带 WebUI 控制台与更多判定策略。
+把 `astrbot_plugin_wake_enhance`（正则唤醒 / 持续唤醒）、`should_I_respond`（小模型判定该不该回）和 `astrbot_plugin_iamthinking`（贴表情标记处理状态）融合成一个插件，并加上了自带 WebUI 控制台与更多判定策略。融合怪 Pro Max，装这一个就够。
 
 ## WebUI 控制台
 
@@ -35,18 +35,41 @@ wake_listener  正则匹配 / 持续窗口判定 → 标记唤醒来源
 AstrBot 决定要不要调 LLM
   ↓
 interest_analyzer  按来源决定是否调小模型
-  ↓  should_reply=false → stop_event，不回
+  ↓  should_reply=false → stop_event，不回（一个表情都不会贴）
   ↓  should_reply=true  → 注入 interest / feeling
-主模型生成回复
+emoji_start_thinking  贴「思考中」表情，启动超时兜底
+  ↓
+主模型生成回复（调工具时表情切「工具中」，用完切回）
   ↓
 save_llm_reply_to_history  回复入自管历史
+  ↓
+emoji_finish  表情换「完成」；超时未回完则换「失败」
 ```
+
+## 贴表情反馈（v1.5.0，融合自 iamthinking）
+
+判定通过、真正开始调主模型的那一刻，给触发消息贴「思考中」表情，之后按处理进度自动切换：
+
+| 状态 | 时机 | 默认表情 ID |
+| --- | --- | --- |
+| 思考中 | 小模型判要回、开始调主模型 | 66 |
+| 工具中 | 主模型调用函数工具（搜网页等） | 270 |
+| 完成 | 回复发出 | 74 |
+| 失败 | 超过超时时间还没回完 | 264 |
+
+相比 iamthinking 原版的关键差异：原版挂在判定**之前**的 `on_waiting_llm_request`，凡进 LLM 阶段就贴，被小模型拦下的消息也贴、且表情再也没人收尾；本融合版把挂点改到 `on_llm_request(priority=-100)`（判定钩子是 priority=10，先跑），**判定拦下的消息事件直接终止，贴表情钩子根本不会执行**。被拦的消息零表情、零残留。
+
+其他说明：
+
+- 仅支持 aiocqhttp（QQ 协议端）群聊；表情 ID 列表留空 = 该阶段不贴，各阶段表情和超时时长都在 WebUI / 配置面板的 `emoji` 组里改
+- 超时兜底只换表情不干预回复，主模型慢悠悠回出来后还会把表情修正成「完成」
+- 判定本身耗时不算在超时窗口内（超时从判定通过才开始计）
 
 ## 配置要点
 
 - `waking_regex`：唤醒正则，改完保存后重载插件生效，坏正则会跳过而不是整条流程炸掉
 - `whitelist`：全插件唯一白名单，填 UMO，**留空 = 不限制**，正则唤醒 / 持续唤醒 / 小模型判定都受它管
-- v1.3 起配置按功能分组：`waking_regex` / `continuous_awakening` / `analysis`（判定供应商 `analysis.provider_id`、失败兜底 `analysis.fail_policy` 等）/ `session`（白名单、历史）；旧版平铺键会在加载时自动迁移
+- v1.3 起配置按功能分组：`waking_regex` / `continuous_awakening` / `analysis`（判定供应商 `analysis.provider_id`、失败兜底 `analysis.fail_policy` 等）/ `emoji`（贴表情）/ `session`（白名单、历史）；旧版平铺键会在加载时自动迁移
 - `analysis.provider_id`：判定用的小模型，留空则自动回退到当前默认供应商（通常是主模型）跑判定，不会静默放行
 - `analysis.fail_policy`：判定挂了（调用失败 / 输出不是合法 JSON）时的兜底，allow 放行、block 拦下；判定输出已做鲁棒解析，能剥掉 markdown 围栏和前后废话
 - 判定 JSON 新增 `exit_wake` 字段：小模型发现自己没被注意时可以输出 `exit_wake: true` 主动退出持续唤醒窗口，本条回不回仍由 `should_reply` 决定（允许回完最后一句再退场）
@@ -65,6 +88,6 @@ save_llm_reply_to_history  回复入自管历史
 
 ## 注意
 
-装这个之前请先把 `astrbot_plugin_wake_enhance` 和 `should_I_respond` 停用，否则唤醒判定会跑两遍。
+装这个之前请先把 `astrbot_plugin_wake_enhance`、`should_I_respond` 停用，否则唤醒判定会跑两遍；装了 `astrbot_plugin_iamthinking` 的话也请停用其一，否则同一条消息会被贴两份表情（互不冲突，但纯粹是重复）。
 
-判定过程会在日志里留下完整痕迹（搜 `RTPM`）：`开始判定（来源 / 供应商）` → `判定模型原始回复` → `判定不回复 / 已注入情绪状态`。只看到「开始判定」没有「原始回复」说明调用挂了，连「开始判定」都没有说明判定环节根本没进。
+判定过程会在日志里留下完整痕迹（搜 `RTPM`）：`开始判定（来源 / 供应商）` → `判定模型原始回复` → `判定不回复 / 已注入情绪状态`。只看到「开始判定」没有「原始回复」说明调用挂了，连「开始判定」都没有说明判定环节根本没进。贴表情的状态切换日志搜 `RTPM-Emoji`。

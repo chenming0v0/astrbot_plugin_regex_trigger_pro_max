@@ -1,20 +1,22 @@
 name: astrbot_plugin_regex_trigger_pro_max
 display_name: Bot唤醒Pro Max
-desc: 正则唤醒 + 持续唤醒 + 小模型二次判定的触发插件，自带 WebUI 控制台。软唤醒交给小模型把关。
-short_desc: 正则唤醒 + 持续唤醒 + 小模型二次判定，自带 WebUI 控制台
+desc: 正则唤醒 + 持续唤醒 + 小模型二次判定 + 处理状态贴表情的触发插件，自带 WebUI 控制台。软唤醒交给小模型把关。
+short_desc: 正则唤醒 + 持续唤醒 + 小模型二次判定 + 处理状态贴表情，自带 WebUI 控制台
 help: |
   本插件不注册任何指令，全部行为由 WebUI 控制台或配置面板控制：
     - waking_regex 填唤醒词正则，消息命中即视为唤醒
     - 唤醒后的消息先交给判定模型判断该不该回，判要回才调主模型
     - 判定模型可输出 exit_wake 主动退出持续唤醒
-    - 持续唤醒、白名单、情绪注入等均在 WebUI / 配置面板调整
-version: v1.4.4
+    - 判定通过后给消息贴「思考中」表情，回复完成 / 调用工具 / 超时各会切换表情状态
+    - 持续唤醒、白名单、情绪注入、贴表情等均在 WebUI / 配置面板调整
+version: v1.5.0
 author: 小辰
 repo: https://github.com/chenming0v0/astrbot_plugin_regex_trigger_pro_max
 tags:
   - 唤醒
   - 触发控制
   - 群聊
+  - 表情反馈
 pages:
   - name: webui
     title: Bot唤醒Pro Max 控制台

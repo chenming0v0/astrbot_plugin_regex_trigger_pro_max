@@ -467,6 +467,74 @@
             </div>
           </div>
 
+          <!-- 贴表情 -->
+          <div class="settings-panel is-hidden" data-panel="emoji">
+            <div class="group-head">
+              <div class="group-title">贴表情反馈</div>
+              <div class="group-desc">判定通过后用 QQ 表情标记消息处理状态（融合自 iamthinking，原插件可停用）。</div>
+            </div>
+            <div class="field-grid">
+              <div class="object-block">
+                <div class="object-title">贴表情反馈 <span class="field-key">emoji</span></div>
+                <div class="setting-line">
+                  <div class="setting-line-text">
+                    <div class="setting-line-title">启用贴表情反馈</div>
+                    <div class="setting-line-desc" data-hint="emoji.enable"></div>
+                  </div>
+                  <label class="toggle"><input type="checkbox" id="field-emoji.enable"><span class="toggle-track"></span></label>
+                </div>
+                <div class="setting-line">
+                  <div class="setting-line-text">
+                    <div class="setting-line-title">超时时间（秒）</div>
+                    <div class="setting-line-desc" data-hint="emoji.timeout_seconds"></div>
+                  </div>
+                  <input type="number" class="control short" id="field-emoji.timeout_seconds" min="0" step="1">
+                </div>
+                <div class="setting-line">
+                  <div class="setting-line-text">
+                    <div class="setting-line-title">完成时移除思考表情</div>
+                    <div class="setting-line-desc" data-hint="emoji.remove_thinking_on_done"></div>
+                  </div>
+                  <label class="toggle"><input type="checkbox" id="field-emoji.remove_thinking_on_done"><span class="toggle-track"></span></label>
+                </div>
+                <div class="setting-line">
+                  <div class="setting-line-text">
+                    <div class="setting-line-title">失败时移除思考表情</div>
+                    <div class="setting-line-desc" data-hint="emoji.remove_thinking_on_error"></div>
+                  </div>
+                  <label class="toggle"><input type="checkbox" id="field-emoji.remove_thinking_on_error"><span class="toggle-track"></span></label>
+                </div>
+                <div class="setting-line">
+                  <div class="setting-line-text">
+                    <div class="setting-line-title">切工具态时移除思考表情</div>
+                    <div class="setting-line-desc" data-hint="emoji.remove_thinking_on_tool"></div>
+                  </div>
+                  <label class="toggle"><input type="checkbox" id="field-emoji.remove_thinking_on_tool"><span class="toggle-track"></span></label>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-label">思考中表情 ID <span class="field-key">emoji.thinking_emoji_ids</span></div>
+                <div id="tag-emoji.thinking_emoji_ids"></div>
+                <div class="field-hint" data-hint="emoji.thinking_emoji_ids"></div>
+              </div>
+              <div class="field-row">
+                <div class="field-label">完成表情 ID <span class="field-key">emoji.done_emoji_ids</span></div>
+                <div id="tag-emoji.done_emoji_ids"></div>
+                <div class="field-hint" data-hint="emoji.done_emoji_ids"></div>
+              </div>
+              <div class="field-row">
+                <div class="field-label">失败表情 ID <span class="field-key">emoji.error_emoji_ids</span></div>
+                <div id="tag-emoji.error_emoji_ids"></div>
+                <div class="field-hint" data-hint="emoji.error_emoji_ids"></div>
+              </div>
+              <div class="field-row">
+                <div class="field-label">工具调用中表情 ID <span class="field-key">emoji.using_tool_emoji_ids</span></div>
+                <div id="tag-emoji.using_tool_emoji_ids"></div>
+                <div class="field-hint" data-hint="emoji.using_tool_emoji_ids"></div>
+              </div>
+            </div>
+          </div>
+
           <!-- 会话与历史 -->
           <div class="settings-panel is-hidden" data-panel="history">
             <div class="group-head">
@@ -576,13 +644,15 @@
       radio: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
       cpu: '<svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>',
       archive: '<svg class="icon" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>',
-      book: '<svg class="icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'
+      book: '<svg class="icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+      smile: '<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>'
     };
 
     var NAV_ITEMS = [
       { key: "status", label: "运行状态", icon: "activity" },
       { key: "wake", label: "唤醒", icon: "radio" },
       { key: "judge", label: "小模型判定", icon: "cpu" },
+      { key: "emoji", label: "贴表情", icon: "smile" },
       { key: "history", label: "会话与历史", icon: "archive" },
       { key: "docs", label: "占位符说明", icon: "book" }
     ];
@@ -591,7 +661,7 @@
       continuous_awakening: ["enable", "waking_interval", "reset_when_reply"]
     };
 
-    var TOP_KEYS = ["waking_regex", "continuous_awakening", "analysis", "session"];
+    var TOP_KEYS = ["waking_regex", "continuous_awakening", "analysis", "emoji", "session"];
 
     function $(id) { return document.getElementById(id); }
 
@@ -794,6 +864,10 @@
     /* ---------- 控件实例 ---------- */
     var tagRegex = makeTagEditor("tag-waking_regex", ".*小辰.*");
     var tagWhitelist = makeTagEditor("tag-whitelist", "aiocqhttp:GroupMessage:114514");
+    var tagEmojiThinking = makeTagEditor("tag-emoji.thinking_emoji_ids", "66");
+    var tagEmojiDone = makeTagEditor("tag-emoji.done_emoji_ids", "74");
+    var tagEmojiError = makeTagEditor("tag-emoji.error_emoji_ids", "264");
+    var tagEmojiTool = makeTagEditor("tag-emoji.using_tool_emoji_ids", "270");
     var selProvider = makeSelect("sel-analysis.provider_id", function (v) { providerName = v; });
     var selPolicy = makeSelect("sel-analysis.fail_policy");
 
@@ -880,6 +954,17 @@
           whitelist: tagWhitelist.get(),
           history_max_length: getFieldValue("session.history_max_length"),
           record_emotion_in_history: getFieldValue("session.record_emotion_in_history")
+        },
+        emoji: {
+          enable: getFieldValue("emoji.enable"),
+          timeout_seconds: getFieldValue("emoji.timeout_seconds"),
+          remove_thinking_on_done: getFieldValue("emoji.remove_thinking_on_done"),
+          remove_thinking_on_error: getFieldValue("emoji.remove_thinking_on_error"),
+          remove_thinking_on_tool: getFieldValue("emoji.remove_thinking_on_tool"),
+          thinking_emoji_ids: tagEmojiThinking.get(),
+          done_emoji_ids: tagEmojiDone.get(),
+          error_emoji_ids: tagEmojiError.get(),
+          using_tool_emoji_ids: tagEmojiTool.get()
         }
       };
       OBJECT_KEYS.continuous_awakening.forEach(function (sub) {
@@ -955,6 +1040,16 @@
       ["history_max_length", "record_emotion_in_history"].forEach(function (sub) {
         setFieldValue("session." + sub, session[sub]);
       });
+
+      var emoji = values.emoji || {};
+      ["enable", "timeout_seconds", "remove_thinking_on_done",
+       "remove_thinking_on_error", "remove_thinking_on_tool"].forEach(function (sub) {
+        setFieldValue("emoji." + sub, emoji[sub]);
+      });
+      tagEmojiThinking.set(emoji.thinking_emoji_ids || []);
+      tagEmojiDone.set(emoji.done_emoji_ids || []);
+      tagEmojiError.set(emoji.error_emoji_ids || []);
+      tagEmojiTool.set(emoji.using_tool_emoji_ids || []);
 
       $("panels").classList.remove("is-hidden");
       $("save-btn").disabled = false;

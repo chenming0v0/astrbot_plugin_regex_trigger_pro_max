@@ -21,29 +21,38 @@ SOURCE_CONTINUOUS = "continuous"  # 持续唤醒窗口内
 SOURCE_NATIVE = "native"        # AstrBot 原生唤醒（@ / 唤醒前缀 / 指令）
 
 PLUGIN_ID = "astrbot_plugin_regex_trigger_pro_max"
-PLUGIN_VERSION = "v1.4.4"
+PLUGIN_VERSION = "v1.5.0"
 
 try:
     from astrbot.api import web as astrbot_web
 except Exception:  # 旧版 AstrBot 没有插件页面 API，WebUI 整体不启用
     astrbot_web = None  # type: ignore[assignment]
 
+try:
+    from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
+        AiocqhttpMessageEvent,
+    )
+except ImportError:  # 非 aiocqhttp 环境也能装，贴表情功能整体跳过
+    AiocqhttpMessageEvent = None
+
 
 @register(
     PLUGIN_ID,
     "辰林 & 小辰",
-    "Bot唤醒Pro Max：正则唤醒 + 持续唤醒 + 小模型二次判定，自带 WebUI 控制台",
+    "Bot唤醒Pro Max：正则唤醒 + 持续唤醒 + 小模型二次判定 + 处理状态贴表情，自带 WebUI 控制台",
     PLUGIN_VERSION,
     "https://github.com/chenming0v0/astrbot_plugin_regex_trigger_pro_max",
 )
 class RegexTriggerProMax(Star):
-    """把 wake_enhance 的正则/持续唤醒与 should_I_respond 的小模型判定串成一条流程。
+    """把 wake_enhance 的正则/持续唤醒、should_I_respond 的小模型判定
+    和 iamthinking 的贴表情状态反馈串成一条流程。
 
     流程顺序：
         1. 消息进来 -> 正则唤醒词 / 持续唤醒窗口判定，命中则置 is_at_or_wake_command
         2. 记录唤醒来源（regex / continuous / native）
         3. LLM 请求前 -> 按配置决定是否让小模型做「该不该回」判定
-        4. 决定回复 -> 把 interest / feeling 注入 prompt
+        4. 决定回复 -> 把 interest / feeling 注入 prompt，贴上「思考中」表情
+        5. 回复发出 -> 表情切换为「完成」；中途调工具/超时也各有表情
     """
 
     # v1.2 及以前的平铺配置键 -> v1.3 分组结构
@@ -75,6 +84,9 @@ class RegexTriggerProMax(Star):
         self.history_cache: Dict[str, list] = {}
         self.history_file = Path("data") / "rtpm_interest_history.json"
         self.history_lock = asyncio.Lock()
+
+        # ---------- 贴表情相关（融合自 iamthinking） ----------
+        self._emoji_timeout_tasks: Dict[Any, asyncio.Task] = {}
 
         asyncio.create_task(self._load_history())
 
@@ -437,6 +449,278 @@ class RegexTriggerProMax(Star):
         await self._save_history()
 
     # ==================================================================
+    # 表情段：融合自 iamthinking（用 QQ 表情回应标记消息处理状态）
+    # ==================================================================
+
+    # extra 键统一用 rtpm_emoji_ 前缀，装回原版 iamthinking 也不会互相污染
+    E_ACTIVE = "rtpm_emoji_active"
+    E_MSG_ID = "rtpm_emoji_message_id"
+    E_DONE = "rtpm_emoji_done"
+    E_TIMED_OUT = "rtpm_emoji_timed_out"
+    E_IN_TOOL = "rtpm_emoji_in_tool"
+    E_RESPONDED = "rtpm_emoji_llm_responded"
+    E_FAILED = "rtpm_emoji_failed"
+    E_FINISHING = "rtpm_emoji_finishing"
+    E_RETRY = "rtpm_emoji_finish_retry"
+
+    def _emoji_cfg(self) -> Dict[str, Any]:
+        return self.config.get("emoji", {}) or {}
+
+    @staticmethod
+    def _emoji_int_list(value: Any) -> List[int]:
+        """配置里的表情 ID 可能是 int 也可能是字符串（WebUI 提交），统一转 int 列表。"""
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            value = [value]
+        out: List[int] = []
+        for item in value:
+            try:
+                out.append(int(item))
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    def _emoji_ids(self, key: str) -> List[int]:
+        return self._emoji_int_list(self._emoji_cfg().get(key))
+
+    def _emoji_enabled(self) -> bool:
+        return bool(self._emoji_cfg().get("enable", True))
+
+    def _emoji_timeout_seconds(self) -> int:
+        try:
+            return int(self._emoji_cfg().get("timeout_seconds", 120))
+        except (TypeError, ValueError):
+            return 120
+
+    def _is_emoji_platform(self, event: AstrMessageEvent) -> bool:
+        """贴表情目前只有 aiocqhttp（QQ 协议端）的群消息支持。"""
+        if getattr(event, "platform_meta", None) is None:
+            return False
+        if event.get_platform_name() != "aiocqhttp":
+            return False
+        if not event.get_group_id():
+            return False
+        if AiocqhttpMessageEvent is not None and not isinstance(event, AiocqhttpMessageEvent):
+            return False
+        return True
+
+    def _get_bot(self, event: AstrMessageEvent):
+        bot = getattr(event, "bot", None)
+        if bot is None or not hasattr(bot, "set_msg_emoji_like"):
+            return None
+        return bot
+
+    async def _set_emoji(self, event: AstrMessageEvent, message_id: Any, emoji_ids: List[int], set_: bool) -> bool:
+        if not emoji_ids:
+            return True  # 该阶段没配表情，视为无事发生
+        bot = self._get_bot(event)
+        if bot is None:
+            return False
+        all_ok = True
+        for emoji_id in sorted(set(emoji_ids)):
+            try:
+                await bot.set_msg_emoji_like(message_id=message_id, emoji_id=emoji_id, set=set_)
+            except Exception as e:
+                all_ok = False
+                logger.warning(f"[RTPM-Emoji] 贴表情失败: message_id={message_id} emoji={emoji_id} set={set_} err={e}")
+        return all_ok
+
+    async def _switch_emoji(
+        self,
+        event: AstrMessageEvent,
+        message_id: Any,
+        *,
+        state_name: str = "",
+        remove_ids: Optional[List[int]] = None,
+        add_ids: Optional[List[int]] = None,
+    ) -> bool:
+        if state_name:
+            logger.info(f"[RTPM-Emoji] 状态切换 [{state_name}]: message_id={message_id}")
+        all_ok = True
+        if remove_ids:
+            all_ok = await self._set_emoji(event, message_id, remove_ids, set_=False) and all_ok
+        if add_ids:
+            all_ok = await self._set_emoji(event, message_id, add_ids, set_=True) and all_ok
+        return all_ok
+
+    def _displaying_emoji_ids(self, event: AstrMessageEvent) -> List[int]:
+        """当前消息上正在显示的表情：工具态优先，否则就是思考表情。"""
+        if event.get_extra(self.E_IN_TOOL, False):
+            return self._emoji_ids("using_tool_emoji_ids")
+        return self._emoji_ids("thinking_emoji_ids")
+
+    def _emoji_should_handle(self, event: AstrMessageEvent) -> bool:
+        if not self._emoji_enabled():
+            return False
+        if not event.get_extra(self.E_ACTIVE, False):
+            return False
+        if event.get_extra(self.E_DONE, False):
+            return False
+        if event.get_extra(self.E_TIMED_OUT, False):
+            return False
+        return self._is_emoji_platform(event)
+
+    def _emoji_cancel_timeout(self, message_id: Any):
+        task = self._emoji_timeout_tasks.pop(message_id, None)
+        if task is not None:
+            task.cancel()
+
+    async def _emoji_handle_timeout(self, event: AstrMessageEvent, message_id: Any, timeout: int):
+        """超时兜底：主模型迟迟没回完，把表情换成失败表情。"""
+        try:
+            await asyncio.sleep(timeout)
+        except asyncio.CancelledError:
+            return
+
+        self._emoji_timeout_tasks.pop(message_id, None)
+        if event.get_extra(self.E_DONE, False) or event.get_extra(self.E_TIMED_OUT, False):
+            return
+
+        logger.info(f"[RTPM-Emoji] 处理超时: message_id={message_id}")
+        event.set_extra(self.E_TIMED_OUT, True)
+
+        remove_ids: List[int] = []
+        if bool(self._emoji_cfg().get("remove_thinking_on_error", True)):
+            remove_ids = self._displaying_emoji_ids(event)
+        await self._switch_emoji(
+            event,
+            message_id,
+            state_name="→ ERROR",
+            remove_ids=remove_ids or None,
+            add_ids=self._emoji_ids("error_emoji_ids") or None,
+        )
+
+    @filter.on_llm_request(priority=-100)
+    async def emoji_start_thinking(self, event: AstrMessageEvent, req: ProviderRequest):
+        """判定通过、真正要调主模型了，才贴「思考中」表情。
+
+        关键就在这个挂点：iamthinking 原版挂在 on_waiting_llm_request（判定之前），
+        被小模型拦下的消息也先贴了表情、之后没人给它换掉。这里改挂
+        on_llm_request 且把优先级压到判定钩子（priority=10）之后 —— 判定拦下的
+        消息事件直接终止，本钩子根本不会执行，表情一个都不会误贴。
+        """
+        if not self._emoji_enabled():
+            return
+        if not self._is_emoji_platform(event):
+            return
+        message_id = getattr(getattr(event, "message_obj", None), "message_id", None)
+        if message_id is None:
+            return
+
+        event.set_extra(self.E_ACTIVE, True)
+        event.set_extra(self.E_MSG_ID, message_id)
+        await self._set_emoji(event, message_id, self._emoji_ids("thinking_emoji_ids"), set_=True)
+
+        timeout = self._emoji_timeout_seconds()
+        if timeout > 0:
+            self._emoji_timeout_tasks[message_id] = asyncio.create_task(
+                self._emoji_handle_timeout(event, message_id, timeout)
+            )
+
+    @filter.on_llm_response()
+    async def emoji_on_llm_response(self, event: AstrMessageEvent, resp: LLMResponse):
+        if not event.get_extra(self.E_ACTIVE, False):
+            return
+        event.set_extra(self.E_RESPONDED, True)
+        message_id = event.get_extra(self.E_MSG_ID)
+        if message_id is not None:
+            self._emoji_cancel_timeout(message_id)
+
+    @filter.on_using_llm_tool()
+    async def emoji_on_tool(self, event: AstrMessageEvent, tool: Any, tool_args: dict):
+        if not self._emoji_should_handle(event):
+            return
+        if event.get_extra(self.E_IN_TOOL, False):
+            return
+        message_id = event.get_extra(self.E_MSG_ID)
+        if message_id is None:
+            return
+
+        event.set_extra(self.E_IN_TOOL, True)
+        remove_ids = (
+            self._emoji_ids("thinking_emoji_ids")
+            if bool(self._emoji_cfg().get("remove_thinking_on_tool", True))
+            else None
+        )
+        await self._switch_emoji(
+            event,
+            message_id,
+            state_name="THINKING → TOOL",
+            remove_ids=remove_ids,
+            add_ids=self._emoji_ids("using_tool_emoji_ids"),
+        )
+
+    @filter.on_llm_tool_respond()
+    async def emoji_after_tool(self, event: AstrMessageEvent, tool: Any, tool_args: dict, tool_result: Any):
+        if not self._emoji_should_handle(event):
+            return
+        if not event.get_extra(self.E_IN_TOOL, False):
+            return
+        message_id = event.get_extra(self.E_MSG_ID)
+        if message_id is None:
+            return
+
+        event.set_extra(self.E_IN_TOOL, False)
+        await self._switch_emoji(
+            event,
+            message_id,
+            state_name="TOOL → THINKING",
+            remove_ids=self._emoji_ids("using_tool_emoji_ids"),
+            add_ids=self._emoji_ids("thinking_emoji_ids"),
+        )
+
+    @filter.after_message_sent()
+    async def emoji_finish(self, event: AstrMessageEvent):
+        if not self._emoji_enabled():
+            return
+        if not event.get_extra(self.E_ACTIVE, False):
+            return
+        if not event.get_extra(self.E_RESPONDED, False):
+            return  # 主模型还没回，这条消息可能是别的插件先发的，不动表情
+        if event.get_extra(self.E_DONE, False):
+            return
+        if event.get_extra(self.E_FAILED, False):
+            return
+        if event.get_extra(self.E_FINISHING, False):
+            return
+        if not self._is_emoji_platform(event):
+            return
+        message_id = event.get_extra(self.E_MSG_ID)
+        if message_id is None:
+            return
+
+        retry = event.get_extra(self.E_RETRY, 0) or 0
+        if retry >= 3:
+            event.set_extra(self.E_FAILED, True)
+            return
+        event.set_extra(self.E_FINISHING, True)
+
+        remove_ids = self._displaying_emoji_ids(event)
+        if event.get_extra(self.E_TIMED_OUT, False):
+            logger.info(f"[RTPM-Emoji] 超时后恢复完成: message_id={message_id}")
+            remove_ids = remove_ids + self._emoji_ids("error_emoji_ids")
+            state_name = "ERROR → DONE"
+        else:
+            state_name = "→ DONE"
+            if not bool(self._emoji_cfg().get("remove_thinking_on_done", True)) and not event.get_extra(self.E_IN_TOOL, False):
+                remove_ids = []
+
+        ok = await self._switch_emoji(
+            event,
+            message_id,
+            state_name=state_name,
+            remove_ids=remove_ids or None,
+            add_ids=self._emoji_ids("done_emoji_ids"),
+        )
+        if ok:
+            event.set_extra(self.E_DONE, True)
+            self._emoji_cancel_timeout(message_id)
+        else:
+            event.set_extra(self.E_RETRY, retry + 1)
+            event.set_extra(self.E_FINISHING, False)
+
+    # ==================================================================
     # WebUI 段：配置控制台（接入方式参考 AstrNa 的插件页面机制）
     # ==================================================================
 
@@ -594,5 +878,8 @@ class RegexTriggerProMax(Star):
         return astrbot_web.json_response({"ok": removed is not None})
 
     async def terminate(self):
+        for task in self._emoji_timeout_tasks.values():
+            task.cancel()
+        self._emoji_timeout_tasks.clear()
         await self._save_history()
         logger.info("[RTPM] Bot唤醒Pro Max 已卸载。")

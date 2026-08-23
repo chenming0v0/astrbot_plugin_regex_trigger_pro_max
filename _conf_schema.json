@@ -96,6 +96,64 @@
       }
     }
   },
+  "emoji": {
+    "type": "object",
+    "description": "贴表情反馈",
+    "hint": "融合自 iamthinking：小模型判定通过、真正开始调主模型时，给那条消息贴「思考中」表情；回复发出后换「完成」，调用工具时换「工具中」，超时换「失败」。判定拦下不回的消息不会贴任何表情。仅支持 aiocqhttp（QQ）群聊；若还装着 iamthinking 原插件，请至少停用一个，避免重复贴。",
+    "items": {
+      "enable": {
+        "type": "bool",
+        "description": "启用贴表情反馈",
+        "default": true
+      },
+      "timeout_seconds": {
+        "type": "int",
+        "description": "超时时间（秒）",
+        "hint": "判定通过后超过此时长主模型还没回完，就把表情换成失败表情。填 0 表示不做超时标记。",
+        "default": 120,
+        "min": 0
+      },
+      "thinking_emoji_ids": {
+        "type": "list",
+        "description": "思考中表情 ID",
+        "hint": "判定通过开始调主模型时贴。可填多个，留空 = 这一阶段不贴。",
+        "default": ["66"]
+      },
+      "done_emoji_ids": {
+        "type": "list",
+        "description": "完成表情 ID",
+        "hint": "回复发出后贴。留空 = 只移除当前表情不贴新的。",
+        "default": ["74"]
+      },
+      "remove_thinking_on_done": {
+        "type": "bool",
+        "description": "完成时移除思考表情",
+        "default": true
+      },
+      "error_emoji_ids": {
+        "type": "list",
+        "description": "失败表情 ID",
+        "hint": "处理超时或出错时贴。留空 = 只移除当前表情不贴新的。",
+        "default": ["264"]
+      },
+      "remove_thinking_on_error": {
+        "type": "bool",
+        "description": "失败时移除思考表情",
+        "default": true
+      },
+      "using_tool_emoji_ids": {
+        "type": "list",
+        "description": "工具调用中表情 ID",
+        "hint": "主模型调用函数工具（搜网页、查天气等）时切换，用完切回思考表情。留空 = 不切换。",
+        "default": ["270"]
+      },
+      "remove_thinking_on_tool": {
+        "type": "bool",
+        "description": "切工具态时移除思考表情",
+        "default": true
+      }
+    }
+  },
   "session": {
     "type": "object",
     "description": "会话与历史",
